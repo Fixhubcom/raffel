@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Raffle Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Rajdhani', 'sans-serif'],
+            },
+            colors: {
+              'space-dark': '#0D0F1A',
+              'space-blue': '#1E2958',
+              'space-card': '#191E38',
+              'space-border': '#3A427D',
+              'cyber-pink': '#EC4899',
+              'star-yellow': '#FBBF24',
+              'nova-green': '#34D399',
+            },
+            boxShadow: {
+              'glow-pink': '0 0 15px rgba(236, 72, 153, 0.6)',
+              'glow-yellow': '0 0 15px rgba(251, 191, 36, 0.6)',
+              'glow-green': '0 0 15px rgba(52, 211, 153, 0.6)',
+              'glow-blue': '0 0 15px rgba(59, 130, 246, 0.6)',
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+      @keyframes move-stars {
+        from { background-position: 0 0; }
+        to { background-position: -10000px 5000px; }
+      }
+      .stars {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .stars {
+        background: #0D0F1A url(https://www.transparenttextures.com/patterns/stardust.png) repeat;
+        z-index: 0;
+      }
+      .stars-animation {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        background-image: 
+          url('https://assets.codepen.io/128313/stars.svg'),
+          url('https://assets.codepen.io/128313/twinkling.svg');
+        background-position: 0 0;
+        background-repeat: repeat;
+        animation: move-stars 200s linear infinite;
+        z-index: -1;
+      }
+
+      @keyframes supernova {
+        0% { transform: scale(0); opacity: 0; }
+        50% { transform: scale(1.2); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      .animate-supernova {
+        animation: supernova 0.8s ease-out forwards;
+      }
+
+       @keyframes wormhole {
+        0% { transform: scale(1.5) rotate(0deg); opacity: 0; }
+        100% { transform: scale(1) rotate(360deg); opacity: 1; }
+      }
+      .animate-wormhole {
+        animation: wormhole 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
+      }
+      
+      @keyframes progress-bar {
+        from { width: 0%; }
+        to { width: 100%; }
+      }
+      .animate-progress-bar {
+        animation: progress-bar 1s linear forwards;
+      }
+      
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+        20%, 40%, 60%, 80% { transform: translateX(5px); }
+      }
+      .animate-shake {
+        animation: shake 0.5s ease-in-out;
+      }
+
+      @keyframes float-points {
+        0% { transform: translateY(0) scale(1); opacity: 1; }
+        100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+      }
+      .animate-float-points {
+        animation: float-points 0.8s ease-out forwards;
+        position: absolute;
+      }
+
+      /* Landing Page Animations */
+      @keyframes glitch {
+        2%,64%{ transform: translate(2px,0) skew(0deg); }
+        4%,60%{ transform: translate(-2px,0) skew(0deg); }
+        62%{ transform: translate(0,0) skew(5deg); }
+      }
+      .glitch {
+        position: relative;
+      }
+      .glitch:before, .glitch:after{
+        content: attr(data-text);
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #0D0F1A;
+      }
+      .glitch:before{
+        left: 2px;
+        text-shadow: -2px 0 #EC4899;
+        clip: rect(44px,450px,56px,0);
+        animation: glitch 3s infinite linear alternate-reverse;
+      }
+      .glitch:after{
+        left: -2px;
+        text-shadow: -2px 0 #FBBF24, 2px 2px #34D399;
+        clip: rect(85px,450px,90px,0);
+        animation: glitch 2s infinite linear alternate-reverse;
+      }
+
+      @keyframes float {
+        0% { transform: translate(0, 0); }
+        50% { transform: translate(15px, 20px) scale(1.1); }
+        100% { transform: translate(0, 0); }
+      }
+      .animate-float { animation: float 8s ease-in-out infinite; }
+      .animate-float-delay { animation: float 12s ease-in-out infinite 2s; }
+      .animate-float-slow { animation: float 15s ease-in-out infinite; }
+      
+      @keyframes pulse-slow {
+        0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 15px rgba(236, 72, 153, 0.6); }
+        50% { opacity: 0.8; transform: scale(1.02); box-shadow: 0 0 25px rgba(236, 72, 153, 0.9); }
+      }
+      .animate-pulse-slow {
+        animation: pulse-slow 3s infinite;
+      }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+  }
+}
+</script>
+</head>
+  <body class="bg-space-dark text-white font-sans">
+    <div class="stars-animation"></div>
+    <div id="root" class="relative z-10"></div>
+  </body>
+</html>
