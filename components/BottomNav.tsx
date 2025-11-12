@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { StarshipIcon, GalaxyIcon, CreditChipIcon, JoystickIcon, AstronautIcon } from './icons';
 
@@ -19,7 +20,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab })
     <div className="fixed bottom-0 left-0 right-0 h-16 bg-space-card/80 backdrop-blur-sm border-t border-space-border z-40 md:hidden">
       <div className="flex justify-around items-center h-full">
         <NavItem icon={<StarshipIcon className="w-6 h-6" />} label="Deck" isActive={activeTab === 'home'} onClick={() => setActiveTab('home')} />
-        <NavItem icon={<GalaxyIcon className="w-6 h-6" />} label="Raffles" isActive={activeTab === 'raffles'} onClick={() => setActiveTab('raffles')} />
+        <NavItem icon={<GalaxyIcon className="w-6 h-6" />} label="Lotto" isActive={activeTab === 'raffles'} onClick={() => setActiveTab('raffles')} />
         <NavItem icon={<CreditChipIcon className="w-6 h-6" />} label="Wallet" isActive={activeTab === 'wallet'} onClick={() => setActiveTab('wallet')} />
         <NavItem icon={<JoystickIcon className="w-6 h-6" />} label="Games" isActive={activeTab === 'play'} onClick={() => setActiveTab('play')} />
         <NavItem icon={<AstronautIcon className="w-6 h-6" />} label="Profile" isActive={activeTab === 'profile'} onClick={() => setActiveTab('profile')} />

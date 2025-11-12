@@ -1,11 +1,13 @@
 
-import React, { useState } from 'react';
-import type { User } from '../types';
+import React, { useState, useRef } from 'react';
+import type { User, LottoTier, UserData, UserLottoEntry } from '../types';
 
 interface ProfilePageProps {
   user: User;
+  userData: UserData;
   onVerifyKyc: () => void;
   setActiveTab: (tab: string) => void;
+  onAvatarUpdate: (newAvatarUrl: string) => void;
 }
 
 const ProfileInfoRow: React.FC<{ label: string; value: string; isVerified?: boolean }> = ({ label, value, isVerified }) => (
@@ -38,7 +40,6 @@ const KycForm: React.FC<{ onVerify: () => void; onCancel: () => void }> = ({ onV
   const canProceedStep1 = formData.fullName && formData.dob && formData.address;
 
   const handleSubmit = () => {
-    // In a real app, you'd upload files and submit data here
     onVerify();
   };
 
@@ -128,22 +129,114 @@ const KycForm: React.FC<{ onVerify: () => void; onCancel: () => void }> = ({ onV
   );
 }
 
+const NumberBall: React.FC<{ number: number; isWinning?: boolean }> = ({ number, isWinning }) => (
+    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm
+        ${isWinning ? 'bg-star-yellow text-space-dark' : 'bg-space-border text-white'}`}>
+        {number}
+    </div>
+);
 
-export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onVerifyKyc, setActiveTab }) => {
+const LottoHistoryEntry: React.FC<{ entry: UserLottoEntry }> = ({ entry }) => {
+    const isWin = entry.status === 'Win';
+    const isLoss = entry.status === 'Loss';
+    const isPending = entry.status === 'Pending';
+    
+    const statusPill = isWin 
+        ? <span className="px-3 py-1 text-sm font-bold rounded-full bg-nova-green/20 text-nova-green">WIN</span>
+        : isLoss
+            ? <span className="px-3 py-1 text-sm font-bold rounded-full bg-red-500/20 text-red-400">LOSS</span>
+            : <span className="px-3 py-1 text-sm font-bold rounded-full bg-yellow-500/20 text-star-yellow">PENDING</span>
+
+    return (
+        <div className="bg-space-card/70 p-4 rounded-lg border border-space-border/50">
+            <div className="flex justify-between items-center mb-3">
+                <div>
+                    <p className="font-bold text-white">{entry.tier} Tier Draw</p>
+                    <p className="text-xs text-gray-400">{entry.drawTime.toLocaleString()}</p>
+                </div>
+                {statusPill}
+            </div>
+            <div className="space-y-2">
+                <div>
+                    <p className="text-xs font-semibold text-gray-300 mb-1">Your Numbers:</p>
+                    <div className="flex space-x-2">
+                        {entry.userNumbers.map(n => <NumberBall key={n} number={n} isWinning={entry.status !== 'Pending' && entry.winningNumbers?.includes(n)} />)}
+                    </div>
+                </div>
+                 {entry.status !== 'Pending' && (
+                     <div>
+                        <p className="text-xs font-semibold text-gray-300 mb-1">Winning Numbers:</p>
+                        <div className="flex space-x-2">
+                            {entry.winningNumbers?.map(n => <NumberBall key={n} number={n} isWinning={true} />)}
+                        </div>
+                    </div>
+                 )}
+            </div>
+            {isWin && (
+                <div className="mt-3 pt-3 border-t border-space-border/50 text-right">
+                    <p className="text-lg font-bold text-nova-green">+${entry.prize.toFixed(2)}</p>
+                </div>
+            )}
+        </div>
+    )
+};
+
+
+const LottoHistory: React.FC<{ entries: UserLottoEntry[] }> = ({ entries }) => (
+    <section id="lotto-history" className="mt-6">
+        <h2 className="text-xl font-bold text-star-yellow tracking-wider mb-4">Lotto History</h2>
+        <div className="space-y-3">
+            {entries.length > 0 ? (
+                entries.map(entry => <LottoHistoryEntry key={entry.drawId} entry={entry} />)
+            ) : (
+                <div className="bg-space-card p-5 rounded-lg text-center text-gray-400 border border-space-border">
+                    You haven't participated in any lotteries yet.
+                </div>
+            )}
+        </div>
+    </section>
+);
+
+export const ProfilePage: React.FC<ProfilePageProps> = ({ user, userData, onVerifyKyc, setActiveTab, onAvatarUpdate }) => {
   const [isVerifying, setIsVerifying] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCameraClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          onAvatarUpdate(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4">
       <div className="max-w-2xl mx-auto">
         <section id="profile-header" className="flex flex-col items-center space-y-4 mb-8">
             <div className="relative">
-                <img src={user.avatarUrl} alt="User Avatar" className="w-28 h-28 rounded-full ring-4 ring-cyber-pink/50" />
-                <button className="absolute bottom-0 right-0 w-8 h-8 bg-star-yellow rounded-full flex items-center justify-center text-space-dark hover:scale-110 transition">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    hidden
+                    accept="image/*"
+                    onChange={handleFileChange}
+                />
+                <img src={user.avatarUrl} alt="User Avatar" className="w-28 h-28 rounded-full ring-4 ring-cyber-pink/50 object-cover" />
+                <button onClick={handleCameraClick} className="absolute bottom-0 right-0 w-8 h-8 bg-star-yellow rounded-full flex items-center justify-center text-space-dark hover:scale-110 transition cursor-pointer">
                     <i className="fas fa-camera"></i>
                 </button>
             </div>
             <div className="text-center">
-                <h1 className="text-3xl font-bold">{user.name}</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold">{user.name}</h1>
                 <p className="text-gray-400">{user.email}</p>
             </div>
         </section>
@@ -154,6 +247,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user, onVerifyKyc, set
              <ProfileInfoRow label="Email" value={user.email} />
              <ProfileInfoRow label="KYC Status" value="" isVerified={user.kycVerified} />
         </section>
+        
+        <LottoHistory entries={userData.lottoEntries} />
 
         {!user.kycVerified && !isVerifying && (
             <section id="kyc-action" className="mt-6 bg-space-card p-5 rounded-lg shadow-lg text-center border border-space-border">

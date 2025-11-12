@@ -55,11 +55,11 @@ export const StarstoneMinerModal: React.FC<StarstoneMinerModalProps> = ({ isOpen
   };
   
   return (
-    <Modal isOpen={isOpen} onClose={handleFinish} title="Starstone Miner Expedition">
+    <Modal isOpen={isOpen} onClose={handleFinish} title="Gem Collector Expedition">
       {isFinished ? (
         <div className="text-center">
           <h3 className="text-2xl font-bold text-star-yellow">Expedition Complete!</h3>
-          <p className="text-lg mt-2">Your mining power is depleted.</p>
+          <p className="text-lg mt-2">Your energy is depleted.</p>
           <div className="my-6">
             <p className="text-gray-400">Total EXP Gathered</p>
             <p className="text-5xl font-bold text-nova-green animate-pulse">{score.toLocaleString()}</p>
@@ -72,7 +72,7 @@ export const StarstoneMinerModal: React.FC<StarstoneMinerModalProps> = ({ isOpen
         <div className="flex flex-col items-center">
             <div className="w-full flex justify-between items-center bg-space-border p-3 rounded-lg mb-6">
                 <div>
-                    <p className="text-sm text-gray-300">Mining Power</p>
+                    <p className="text-sm text-gray-300">Energy</p>
                     <p className="text-2xl font-bold text-white">{miningPower} / {MAX_POWER}</p>
                 </div>
                  <div>
@@ -94,7 +94,7 @@ export const StarstoneMinerModal: React.FC<StarstoneMinerModalProps> = ({ isOpen
                 ))}
             </div>
            
-            <p className="text-gray-400 text-sm h-4">{isMining ? "Mining..." : "Click the stone to mine!"}</p>
+            <p className="text-gray-400 text-sm h-4">{isMining ? "Collecting..." : "Click the gem to collect!"}</p>
         </div>
       )}
     </Modal>

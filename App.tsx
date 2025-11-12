@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
-import type { User, Wallet, WithdrawableWallet, PointsWallet, RaffleTier, Transaction, CoinCharacter, SpinWheelPrize, Referral, TriviaQuestion } from './types';
+
+import React, { useState, useEffect } from 'react';
+import type { User, Wallet, WithdrawableWallet, PointsWallet, LottoTier, Transaction, CoinCharacter, SpinWheelPrize, Referral, TriviaQuestion, Winner, Ad, ScholarshipQuestion, AdminSettings, UserData, LottoDraw, UserLottoEntry } from './types';
 import { TransactionType } from './types';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
@@ -13,24 +14,49 @@ import { RafflesPage } from './components/RafflesPage';
 import { Modal } from './components/Modal';
 import { TriviaModal } from './components/TriviaModal';
 import { StarstoneMinerModal } from './components/StarstoneMinerModal';
+import { ScholarshipQuizModal } from './components/ScholarshipQuizModal';
 import LandingPage from './components/LandingPage';
 import { AdminPage } from './components/AdminPage';
 
 
 // --- INITIAL MOCKED DATA ---
-const getNextDrawTime = () => {
-  const now = new Date();
+const getNextDrawTime = (from = new Date()) => {
+  const now = new Date(from);
   const hours = now.getHours();
   const nextDrawHour = (Math.floor(hours / 4) + 1) * 4;
   const nextDraw = new Date(now);
+
+  nextDraw.setMinutes(0, 0, 0);
+
   if (nextDrawHour >= 24) {
     nextDraw.setDate(nextDraw.getDate() + 1);
-    nextDraw.setHours(0, 0, 0, 0);
+    nextDraw.setHours(0);
   } else {
-    nextDraw.setHours(nextDrawHour, 0, 0, 0);
+    nextDraw.setHours(nextDrawHour);
   }
   return nextDraw;
 };
+
+const getUpcomingDraws = (count: number): LottoDraw[] => {
+    const draws: LottoDraw[] = [];
+    let lastDrawTime = new Date();
+    // Start with the next upcoming draw time
+    let nextDrawTime = getNextDrawTime();
+
+    for (let i = 0; i < count; i++) {
+        const drawDate = i === 0 ? nextDrawTime : getNextDrawTime(lastDrawTime);
+        draws.push({
+            id: drawDate.toISOString(),
+            drawTime: drawDate,
+            status: 'Upcoming',
+            winningNumbers: [],
+            processedForAutoPlay: false,
+        });
+        lastDrawTime = new Date(drawDate.getTime() + 1000); // increment slightly to get next block
+    }
+    return draws;
+};
+
 
 const nextDraw = getNextDrawTime();
 
@@ -48,15 +74,23 @@ const MOCK_TRIVIA_QUESTIONS: TriviaQuestion[] = [
     { question: 'What phenomenon allows for faster-than-light travel in science fiction?', options: ['Wormhole', 'Hyperdrive', 'Quantum Tunneling', 'Solar Sails'], correctAnswerIndex: 1, points: 100 },
 ];
 
-const ALL_USERS_DATA = {
+const MOCK_SCHOLARSHIP_QUESTIONS: ScholarshipQuestion[] = [
+    { question: 'What is the speed of light in a vacuum?', options: ['299,792 km/s', '150,000 km/s', '1,000,000 km/s', '3,000 km/s'], correctAnswerIndex: 0 },
+    { question: 'Who developed the theory of relativity?', options: ['Isaac Newton', 'Galileo Galilei', 'Albert Einstein', 'Stephen Hawking'], correctAnswerIndex: 2 },
+    { question: 'What is the most abundant element in the universe?', options: ['Oxygen', 'Helium', 'Carbon', 'Hydrogen'], correctAnswerIndex: 3 },
+    { question: 'Which NASA mission first landed humans on the Moon?', options: ['Apollo 11', 'Voyager 1', 'Mariner 10', 'Pioneer 10'], correctAnswerIndex: 0 },
+    { question: 'What is a black hole?', options: ['A very dense star', 'A region of spacetime where gravity is so strong that nothing can escape', 'A wormhole to another dimension', 'The center of a galaxy'], correctAnswerIndex: 1 },
+];
+
+const ALL_USERS_DATA: Record<string, UserData> = {
     'usr_12345': {
         depositWallet: { totalDeposited: 500, totalSpent: 150, availableBalance: 350 },
         withdrawableWallet: { balance: 505.00 },
         pointsWallet: { balance: 2500 },
         transactions: [
             { id: '1', type: TransactionType.DEPOSIT, amount: 100, date: '2024-05-21 10:30 AM', status: 'Completed' },
-            { id: '2', type: TransactionType.RAFFLE_WIN, amount: 500, date: '2024-05-21 08:00 AM', status: 'Completed' },
-            { id: '3', type: TransactionType.RAFFLE_ENTRY, amount: -10, date: '2024-05-21 07:55 AM', status: 'Completed' },
+            { id: '2', type: TransactionType.LOTTO_WIN, amount: 500, date: '2024-05-21 08:00 AM', status: 'Completed' },
+            { id: '3', type: TransactionType.LOTTO_ENTRY, amount: -10, date: '2024-05-21 07:55 AM', status: 'Completed' },
             { id: '4', type: TransactionType.REFERRAL_BONUS, amount: 5.00, date: '2024-05-20 04:15 PM', status: 'Completed' },
         ],
         coinCharacters: [
@@ -66,6 +100,8 @@ const ALL_USERS_DATA = {
             { id: 'c5', name: 'Quantum Quartz', rarity: 'Rare', icon: 'fas fa-atom', description: 'A crystal pulsating with unstable energy.', bgColor: 'bg-gradient-to-br from-purple-700 to-slate-800' },
             { id: 'c4', name: 'Golden Griffin', rarity: 'Mythic', icon: 'fas fa-dragon', description: 'A legendary coin for top performers.', bgColor: 'bg-gradient-to-br from-amber-600 to-slate-800' },
         ],
+        lottoEntries: [],
+        autoPlayConfig: null,
     },
     'usr_67890': {
         depositWallet: { totalDeposited: 2000, totalSpent: 800, availableBalance: 1200 },
@@ -73,10 +109,12 @@ const ALL_USERS_DATA = {
         pointsWallet: { balance: 12500 },
         transactions: [
             { id: '6', type: TransactionType.DEPOSIT, amount: 1000, date: '2024-05-22 11:00 AM', status: 'Completed' },
-            { id: '7', type: TransactionType.RAFFLE_WIN, amount: 10000, date: '2024-05-22 08:00 AM', status: 'Completed' },
-            { id: '8', type: TransactionType.RAFFLE_ENTRY, amount: -100, date: '2024-05-22 07:50 AM', status: 'Completed' },
+            { id: '7', type: TransactionType.LOTTO_WIN, amount: 10000, date: '2024-05-22 08:00 AM', status: 'Completed' },
+            { id: '8', type: TransactionType.LOTTO_ENTRY, amount: -100, date: '2024-05-22 07:50 AM', status: 'Completed' },
         ],
         coinCharacters: [{ id: 'c4', name: 'Golden Griffin', rarity: 'Mythic', icon: 'fas fa-dragon', description: 'A legendary coin for top performers.', bgColor: 'bg-gradient-to-br from-amber-600 to-slate-800' }],
+        lottoEntries: [],
+        autoPlayConfig: null,
     },
     'usr_abcde': {
         depositWallet: { totalDeposited: 100, totalSpent: 20, availableBalance: 80 },
@@ -84,9 +122,11 @@ const ALL_USERS_DATA = {
         pointsWallet: { balance: 500 },
         transactions: [
              { id: '9', type: TransactionType.DEPOSIT, amount: 100, date: '2024-05-23 09:00 AM', status: 'Completed' },
-             { id: '10', type: TransactionType.RAFFLE_ENTRY, amount: -10, date: '2024-05-23 09:05 AM', status: 'Completed' },
+             { id: '10', type: TransactionType.LOTTO_ENTRY, amount: -10, date: '2024-05-23 09:05 AM', status: 'Completed' },
         ],
         coinCharacters: [],
+        lottoEntries: [],
+        autoPlayConfig: null,
     },
     'usr_fghij': {
         depositWallet: { totalDeposited: 50, totalSpent: 50, availableBalance: 0 },
@@ -96,16 +136,35 @@ const ALL_USERS_DATA = {
             { id: '11', type: TransactionType.DEPOSIT, amount: 50, date: '2024-05-19 01:00 PM', status: 'Completed' },
         ],
         coinCharacters: [{ id: 'c3', name: 'Raffle Ruby', rarity: 'Rare', icon: 'fas fa-gem', description: 'A rare gem for the dedicated player.', bgColor: 'bg-gradient-to-br from-red-700 to-slate-800' }],
+        lottoEntries: [],
+        autoPlayConfig: null,
     }
 };
 
+const MOCK_WINNER_POOL = [
+    { name: 'John D.', avatarUrl: `https://i.pravatar.cc/150?u=i042581f4e29026704k` },
+    { name: 'Jane S.', avatarUrl: `https://i.pravatar.cc/150?u=j042581f4e29026704l` },
+    { name: 'Mike B.', avatarUrl: `https://i.pravatar.cc/150?u=k042581f4e29026704m` },
+    { name: 'Sarah P.', avatarUrl: `https://i.pravatar.cc/150?u=l042581f4e29026704n` },
+    { name: 'Chris L.', avatarUrl: `https://i.pravatar.cc/150?u=m042581f4e29026704o` },
+    { name: 'Emily R.', avatarUrl: `https://i.pravatar.cc/150?u=n042581f4e29026704p` },
+];
 
-const STATIC_DATA = {
-  raffleTiers: [
-    { level: 'Basic', entryFee: 1, prizeRange: '$1k-$10k', prizePool: 8500, drawTime: nextDraw, celestialBody: { name: 'Bronze Asteroid', className: 'animate-spin' } },
-    { level: 'Intermediate', entryFee: 5, prizeRange: '$10k-$100k', prizePool: 75000, drawTime: nextDraw, celestialBody: { name: 'Silver Nebula', className: 'animate-pulse' } },
-    { level: 'Pro', entryFee: 10, prizeRange: '$100k-$1M', prizePool: 550000, drawTime: nextDraw, celestialBody: { name: 'Golden Galaxy', className: 'animate-spin-slow' } },
-  ] as RaffleTier[],
+const MOCK_LOTTO_WINS = [
+    { tier: 'Basic', prize: 8500 },
+    { tier: 'Pro', prize: 550000 },
+    { tier: 'Intermediate', prize: 75000 },
+    { tier: 'Basic', prize: 9200 },
+    { tier: 'Intermediate', prize: 68000 },
+    { tier: 'Pro', prize: 490000 },
+] as const;
+
+const MOCK_STATIC_DATA = {
+  lottoTiers: [
+    { level: 'Basic', entryFee: 1, prizeRange: '$1k-$10k', prizePool: 8500, drawTime: nextDraw },
+    { level: 'Intermediate', entryFee: 5, prizeRange: '$10k-$100k', prizePool: 75000, drawTime: nextDraw },
+    { level: 'Pro', entryFee: 10, prizeRange: '$100k-$1M', prizePool: 550000, drawTime: nextDraw },
+  ] as LottoTier[],
   spinWheelPrizes: [
     { label: '$10', value: 10, type: 'cash', color: '#6366F1'},
     { label: '500 Pts', value: 500, type: 'points', color: '#F59E0B' },
@@ -116,6 +175,32 @@ const STATIC_DATA = {
     { label: '$5', value: 5, type: 'cash', color: '#6366F1' },
     { label: 'Jackpot!', value: 1000, type: 'cash', color: '#10B981' },
   ] as SpinWheelPrize[],
+  ads: [
+    {
+        id: 'ad1',
+        title: 'PRO LOTTO JACKPOT!',
+        description: 'The Pro prize pool has reached a record high of $750,000! Enter now for a chance to win.',
+        ctaText: 'Enter Pro Lotto',
+        imageUrl: 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2071&auto=format&fit=crop',
+        theme: 'yellow',
+    },
+    {
+        id: 'ad2',
+        title: 'NEW GAME: TRIVIA CHALLENGE',
+        description: 'Test your knowledge and win thousands of EXP Points in our new daily trivia game.',
+        ctaText: 'Play Now',
+        imageUrl: 'https://images.unsplash.com/photo-1446776811953-b23d57942428?q=80&w=2072&auto=format&fit=crop',
+        theme: 'pink',
+    },
+    {
+        id: 'ad3',
+        title: 'DOUBLE REFERRAL REWARDS',
+        description: 'For a limited time, get double the rewards for every new player you bring to the platform. Expand your reach!',
+        ctaText: 'Refer a Friend',
+        imageUrl: 'https://images.unsplash.com/photo-1506443432602-ac2fcd6f54e0?q=80&w=2070&auto=format&fit=crop',
+        theme: 'blue',
+    },
+  ] as Ad[],
 };
 // --- END INITIAL MOCKED DATA ---
 
@@ -124,100 +209,258 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
   const [users, setUsers] = useState(MOCK_USERS);
-  const [usersData, setUsersData] = useState(ALL_USERS_DATA);
+  const [usersData, setUsersData] = useState<Record<string, UserData>>(ALL_USERS_DATA);
+  const [lottoDraws, setLottoDraws] = useState<LottoDraw[]>(() => getUpcomingDraws(6));
   
-  const [currentUser] = useState(MOCK_USERS[0]);
-  const currentUserData = usersData[currentUser.id];
+  const [userRole, setUserRole] = useState<'user' | 'admin' | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  const [adminSettings, setAdminSettings] = useState<AdminSettings>({
+    raffleWinRate: 100,
+    spinWinRate: 8,
+    triviaWinRate: 3,
+    scholarshipWinRate: 200,
+    raffleParticipants: 11432,
+    spinParticipants: 5890,
+    triviaParticipants: 2312,
+    scholarshipParticipants: 4567,
+  });
+
+  const [recentWinners, setRecentWinners] = useState<Winner[]>([
+    { id: 'win-initial-1', name: 'Alex R.', avatarUrl: `https://i.pravatar.cc/150?u=b042581f4e29026704e`, prize: 8500, tier: 'Basic' },
+    { id: 'win-initial-2', name: 'Jane S.', avatarUrl: `https://i.pravatar.cc/150?u=c042581f4e29026704f`, prize: 550000, tier: 'Pro' },
+    { id: 'win-initial-3', name: 'Sam T.', avatarUrl: `https://i.pravatar.cc/150?u=d042581f4e29026704g`, prize: 75000, tier: 'Intermediate' },
+    { id: 'win-initial-4', name: 'Ivy C.', avatarUrl: `https://i.pravatar.cc/150?u=e042581f4e29026704h`, prize: 9200, tier: 'Basic' },
+    { id: 'win-initial-5', name: 'Jax P.', avatarUrl: `https://i.pravatar.cc/150?u=f042581f4e29026704i`, prize: 68000, tier: 'Intermediate' },
+    { id: 'win-initial-6', name: 'Owen F.', avatarUrl: `https://i.pravatar.cc/150?u=g042581f4e29026704j`, prize: 490000, tier: 'Pro' },
+  ]);
 
   // Modal states
-  const [playTier, setPlayTier] = useState<RaffleTier | null>(null);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [showSpinWheel, setShowSpinWheel] = useState(false);
   const [showWinSplash, setShowWinSplash] = useState(false);
   const [showLossSplash, setShowLossSplash] = useState(false);
-  const [lastRaffleResult, setLastRaffleResult] = useState({ prize: 0, tier: '' });
+  const [lastLottoResult, setLastLottoResult] = useState({ prize: 0, tier: '' });
 
   // Game states
   const [showTriviaModal, setShowTriviaModal] = useState(false);
   const [showMinerModal, setShowMinerModal] = useState(false);
+  const [showScholarshipQuizModal, setShowScholarshipQuizModal] = useState(false);
 
   const [notification, setNotification] = useState<{type: 'success' | 'error' | 'info', message: string} | null>(null);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const winnerInterval = setInterval(() => {
+        const randomWinnerInfo = MOCK_WINNER_POOL[Math.floor(Math.random() * MOCK_WINNER_POOL.length)];
+        const randomWinDetails = MOCK_LOTTO_WINS[Math.floor(Math.random() * MOCK_LOTTO_WINS.length)];
+        const newWinner: Winner = { id: `win_${Date.now()}_${Math.random()}`, name: randomWinnerInfo.name, avatarUrl: randomWinnerInfo.avatarUrl, prize: Math.floor(randomWinDetails.prize * (0.8 + Math.random() * 0.4)), tier: randomWinDetails.tier };
+        setRecentWinners(prevWinners => [newWinner, ...prevWinners.slice(0, 9)]);
+    }, 4000);
+    return () => clearInterval(winnerInterval);
+  }, [isLoggedIn]);
+  
+  // Effect to manage and progress lotto draws
+  useEffect(() => {
+    const interval = setInterval(() => {
+        setLottoDraws(currentDraws => {
+            let hasChanged = false;
+            const now = new Date();
+            const updatedDraws = currentDraws.map(draw => {
+                if (draw.status === 'Upcoming' && now >= draw.drawTime) {
+                    hasChanged = true;
+                    return {
+                        ...draw,
+                        status: 'Finished',
+                        winningNumbers: [
+                            Math.floor(Math.random() * 50) + 1,
+                            Math.floor(Math.random() * 50) + 1,
+                            Math.floor(Math.random() * 50) + 1,
+                        ]
+                    };
+                }
+                return draw;
+            });
+            return hasChanged ? updatedDraws : currentDraws;
+        });
+    }, 1000); // Check every second
+    return () => clearInterval(interval);
+  }, []);
+
+  // Effect to process winners when a draw finishes
+  useEffect(() => {
+    const finishedDraws = lottoDraws.filter(d => d.status === 'Finished');
+    if (finishedDraws.length === 0) return;
+
+    setUsersData(currentUsersData => {
+        let newUsersData = JSON.parse(JSON.stringify(currentUsersData));
+        let dataChanged = false;
+
+        finishedDraws.forEach(draw => {
+            Object.keys(newUsersData).forEach(userId => {
+                const user = newUsersData[userId];
+                user.lottoEntries.forEach((entry: UserLottoEntry) => {
+                    if (entry.drawId === draw.id && entry.status === 'Pending') {
+                        dataChanged = true;
+                        entry.winningNumbers = draw.winningNumbers;
+                        const correctNumbers = entry.userNumbers.filter(n => draw.winningNumbers.includes(n)).length;
+                        if (correctNumbers >= 2) { // Win condition
+                            const prize = (entry.tier === 'Pro' ? 500 : entry.tier === 'Intermediate' ? 50 : 5) * entry.amount;
+                            entry.status = 'Win';
+                            entry.prize = prize;
+                            user.withdrawableWallet.balance += prize;
+                            user.transactions.unshift({
+                                id: `tx_win_${draw.id}_${userId}`,
+                                type: TransactionType.LOTTO_WIN,
+                                amount: prize,
+                                date: new Date().toLocaleString(),
+                                status: 'Completed'
+                            });
+                        } else {
+                            entry.status = 'Loss';
+                        }
+                    }
+                });
+            });
+        });
+
+        return dataChanged ? newUsersData : currentUsersData;
+    });
+}, [lottoDraws]);
+
+  // Effect to auto-play for users when a draw finishes
+  useEffect(() => {
+    if (lottoDraws.length === 0) return;
+
+    const justFinishedDraws = lottoDraws.filter(d => d.status === 'Finished' && !d.processedForAutoPlay);
+    if (justFinishedDraws.length === 0) return;
+
+    const nextDraw = lottoDraws.slice().sort((a, b) => new Date(a.drawTime).getTime() - new Date(b.drawTime).getTime()).find(d => d.status === 'Upcoming' && new Date(d.drawTime) > new Date());
+    if (!nextDraw) return; // No upcoming draws to enter
+
+    setUsersData(currentUsersData => {
+        let newUsersData = JSON.parse(JSON.stringify(currentUsersData));
+        let dataChanged = false;
+
+        Object.keys(newUsersData).forEach(userId => {
+            const user = newUsersData[userId];
+            const config = user.autoPlayConfig;
+
+            if (config && config.enabled) {
+                if (user.depositWallet.availableBalance >= config.amount) {
+                    user.depositWallet.availableBalance -= config.amount;
+                    user.depositWallet.totalSpent += config.amount;
+                    
+                    user.transactions.unshift({
+                        id: `tx_auto_${Date.now()}`, type: TransactionType.LOTTO_ENTRY, amount: -config.amount, date: new Date().toLocaleString(), status: 'Completed',
+                    });
+
+                    user.lottoEntries.unshift({
+                        drawId: nextDraw.id, drawTime: nextDraw.drawTime, userNumbers: config.numbers, tier: config.tier, amount: config.amount, status: 'Pending', prize: 0,
+                    });
+                    dataChanged = true;
+                    
+                    if (userId === currentUserId) {
+                         showNotification('success', `Auto-play successful! Entered next lotto for $${config.amount}.`);
+                    }
+                } else {
+                    config.enabled = false;
+                    dataChanged = true;
+                    if (userId === currentUserId) {
+                         showNotification('error', 'Auto-play disabled due to insufficient funds.');
+                    }
+                }
+            }
+        });
+
+        return dataChanged ? newUsersData : currentUsersData;
+    });
+
+    setLottoDraws(currentDraws =>
+        currentDraws.map(d =>
+            justFinishedDraws.find(fd => fd.id === d.id) ? { ...d, processedForAutoPlay: true } : d
+        )
+    );
+  }, [lottoDraws, currentUserId]);
+
 
   const showNotification = (type: 'success' | 'error' | 'info', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 3000);
   };
   
-  const handleLogin = () => setIsLoggedIn(true);
-  const handleLogout = () => setIsLoggedIn(false);
-
-  const handlePlayRaffle = (tier: RaffleTier) => {
-      setPlayTier(tier);
+  const handleLogin = (role: 'user' | 'admin') => {
+    setUserRole(role);
+    const userId = role === 'admin' ? MOCK_USERS[1].id : MOCK_USERS[0].id;
+    setCurrentUserId(userId);
+    setIsLoggedIn(true);
+    setActiveTab(role === 'admin' ? 'admin' : 'home');
   };
-  
-  const confirmPlay = () => {
-      if (!playTier) return;
-      
-      if(currentUserData.depositWallet.availableBalance < playTier.entryFee) {
-          showNotification('error', 'Insufficient funds to enter raffle.');
-          setPlayTier(null);
-          return;
-      }
-      
-      const isWin = Math.random() > 0.5; // 50% chance to win
-      let prizeAmount = 0;
-      if (isWin) {
-          prizeAmount = playTier.entryFee * (10 + Math.random() * 10); // Win 10x-20x entry fee
-      }
-      setLastRaffleResult({ prize: prizeAmount, tier: playTier.level });
 
-      setUsersData(prevData => {
-          const newUserData = { ...prevData[currentUser.id] };
-          const entryTx: Transaction = {
-              id: String(newUserData.transactions.length + 100),
-              type: TransactionType.RAFFLE_ENTRY,
-              amount: -playTier.entryFee,
-              date: new Date().toLocaleString(),
-              status: 'Completed',
-              result: { type: isWin ? 'win' : 'loss' }
-          };
-          
-          let winTx: Transaction | null = null;
-          if (isWin) {
-              winTx = {
-                id: String(newUserData.transactions.length + 101),
-                type: TransactionType.RAFFLE_WIN,
-                amount: prizeAmount,
-                date: new Date().toLocaleString(),
-                status: 'Completed'
-              };
-          }
-          
-          const newTransactions = winTx ? [winTx, entryTx, ...newUserData.transactions] : [entryTx, ...newUserData.transactions];
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUserRole(null);
+    setCurrentUserId(null);
+  };
 
-          newUserData.depositWallet.availableBalance -= playTier.entryFee;
-          newUserData.depositWallet.totalSpent += playTier.entryFee;
-          newUserData.withdrawableWallet.balance += prizeAmount;
-          newUserData.transactions = newTransactions;
+  const handlePlayLotto = (draw: LottoDraw, tier: LottoTier, numbers: number[], amount: number, autoPlay: boolean) => {
+    if (!currentUserId) return;
+    
+    setUsersData(prevData => {
+        const prevUserData = prevData[currentUserId];
+        if (prevUserData.depositWallet.availableBalance < amount) {
+            showNotification('error', 'Insufficient funds for this entry.');
+            return prevData;
+        }
 
-          return { ...prevData, [currentUser.id]: newUserData };
-      });
-      
-      setPlayTier(null);
-      setTimeout(() => {
-        isWin ? setShowWinSplash(true) : setShowLossSplash(true);
-      }, 300);
-  }
+        const newUserData = { ...prevUserData };
+
+        const entryTx: Transaction = {
+            id: `tx_${Date.now()}`, type: TransactionType.LOTTO_ENTRY, amount: -amount, date: new Date().toLocaleString(), status: 'Completed', result: { type: 'loss' }
+        };
+
+        const newEntry: UserLottoEntry = {
+            drawId: draw.id, drawTime: draw.drawTime, userNumbers: numbers, tier: tier.level, amount: amount, status: 'Pending', prize: 0,
+        };
+
+        newUserData.depositWallet.availableBalance -= amount;
+        newUserData.depositWallet.totalSpent += amount;
+        newUserData.transactions = [entryTx, ...newUserData.transactions];
+        newUserData.lottoEntries = [newEntry, ...newUserData.lottoEntries];
+
+        if (autoPlay) {
+            newUserData.autoPlayConfig = { enabled: true, amount, numbers, tier: tier.level };
+            showNotification('info', 'Auto-play is enabled for subsequent draws.');
+        } else {
+             showNotification('success', `Entered ${tier.level} lotto for ${draw.drawTime.toLocaleTimeString()}!`);
+        }
+
+        return { ...prevData, [currentUserId]: newUserData };
+    });
+};
+
+const handleDisableAutoPlay = () => {
+    if (!currentUserId) return;
+    setUsersData(prevData => {
+        const currentUserData = { ...prevData[currentUserId] };
+        if (currentUserData.autoPlayConfig) {
+            currentUserData.autoPlayConfig.enabled = false;
+        }
+        return { ...prevData, [currentUserId]: currentUserData };
+    });
+    showNotification('info', 'Auto-play has been disabled.');
+};
+
 
   const handleDeposit = (amount: number, currency: string) => {
-    // This is a mock, so we just add a pending transaction
     showNotification('info', `Deposit of ${currency === 'USD' ? '$' : ''}${amount} ${currency !== 'USD' ? currency : ''} is processing.`);
     setShowDepositModal(false);
   };
 
   const handleWithdraw = (amount: number, address: string, currency: string) => {
+    if (!currentUser || !currentUserData) return;
     if (amount > currentUserData.withdrawableWallet.balance) {
       showNotification('error', 'Withdrawal amount exceeds available balance.');
       return;
@@ -226,28 +469,39 @@ const App: React.FC = () => {
       showNotification('error', 'KYC verification required for withdrawals over $10,000.');
       return;
     }
-
     showNotification('success', `Withdrawal of ${amount.toFixed(2)} ${currency} to ${address} is processing.`);
     setShowWithdrawModal(false);
   };
 
   const handleVerifyKyc = () => {
-    setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, kycVerified: true } : u));
+    if (!currentUserId) return;
+    setUsers(prev => prev.map(u => u.id === currentUserId ? { ...u, kycVerified: true } : u));
     showNotification('success', 'KYC Verification Successful!');
   };
 
+  const handleAvatarUpdate = (newAvatarUrl: string) => {
+    if (!currentUserId) return;
+    setUsers(prevUsers => 
+        prevUsers.map(u => 
+            u.id === currentUserId ? { ...u, avatarUrl: newAvatarUrl } : u
+        )
+    );
+    showNotification('success', 'Avatar updated successfully!');
+  };
+
   const handleConvertPoints = (points: number) => {
-    const conversionRate = 1000; // 1000 points = $1
+    if (!currentUserData || !currentUserId) return;
+    const conversionRate = 1000;
     if (points > currentUserData.pointsWallet.balance) {
       showNotification('error', 'Insufficient points.');
       return;
     }
     const convertedAmount = points / conversionRate;
     setUsersData(prev => {
-        const newUserData = { ...prev[currentUser.id] };
+        const newUserData = { ...prev[currentUserId] };
         newUserData.pointsWallet.balance -= points;
         newUserData.withdrawableWallet.balance += convertedAmount;
-        return { ...prev, [currentUser.id]: newUserData };
+        return { ...prev, [currentUserId]: newUserData };
     });
     showNotification('success', `${points} points converted to $${convertedAmount.toFixed(2)}!`);
     setShowConvertModal(false);
@@ -258,25 +512,44 @@ const App: React.FC = () => {
       showNotification('info', 'Better luck next time!');
       return;
     }
-    // Logic to update balances based on prize
     showNotification('success', `You won ${prize.label}!`);
   }
 
+  const handleStartWeeklyTrivia = () => {
+    if (!currentUserData) return;
+    if (currentUserData.depositWallet.availableBalance < 5) {
+      showNotification('error', 'You must have at least $5.00 in your deposit wallet to play.');
+      return;
+    }
+    setShowTriviaModal(true);
+  };
+
   const handleTriviaEnd = (pointsWon: number) => {
+    if (!currentUserId) return;
     setUsersData(prev => {
-        const newUserData = { ...prev[currentUser.id] };
+        const newUserData = { ...prev[currentUserId] };
         newUserData.pointsWallet.balance += pointsWon;
-        return { ...prev, [currentUser.id]: newUserData };
+        return { ...prev, [currentUserId]: newUserData };
     });
     showNotification('success', `You earned ${pointsWon} EXP Points from the trivia!`);
     setShowTriviaModal(false);
   }
+  
+  const handleScholarshipQuizEnd = (isWinner: boolean) => {
+    if(isWinner) {
+        showNotification('success', 'Congratulations! You have won the scholarship! You will be contacted shortly.');
+    } else {
+        showNotification('info', 'Thank you for participating. Better luck next month!');
+    }
+    setShowScholarshipQuizModal(false);
+  };
 
   const handleMiningEnd = (pointsWon: number) => {
+    if (!currentUserId) return;
      setUsersData(prev => {
-        const newUserData = { ...prev[currentUser.id] };
+        const newUserData = { ...prev[currentUserId] };
         newUserData.pointsWallet.balance += pointsWon;
-        return { ...prev, [currentUser.id]: newUserData };
+        return { ...prev, [currentUserId]: newUserData };
     });
     showNotification('success', `You mined ${pointsWon} EXP Points!`);
     setShowMinerModal(false);
@@ -296,9 +569,17 @@ const App: React.FC = () => {
     )
   }
 
-  if (!isLoggedIn) {
+  if (!isLoggedIn || !currentUserId) {
     return <LandingPage onLogin={handleLogin} />;
   }
+
+  const currentUser = users.find(u => u.id === currentUserId);
+  const currentUserData = usersData[currentUserId];
+
+  if (!currentUser || !currentUserData) {
+    return <LandingPage onLogin={handleLogin} />;
+  }
+
 
   const renderContent = () => {
     switch(activeTab) {
@@ -307,19 +588,29 @@ const App: React.FC = () => {
           depositWallet={currentUserData.depositWallet}
           withdrawableWallet={currentUserData.withdrawableWallet}
           pointsWallet={currentUserData.pointsWallet}
-          raffleTiers={STATIC_DATA.raffleTiers}
+          lottoTiers={MOCK_STATIC_DATA.lottoTiers}
           transactions={currentUserData.transactions}
           coinCharacters={currentUserData.coinCharacters}
+          recentWinners={recentWinners}
+          ads={MOCK_STATIC_DATA.ads}
           onConvert={() => setShowConvertModal(true)}
           setActiveTab={setActiveTab}
         />;
       case 'raffles':
-        return <RafflesPage raffleTiers={STATIC_DATA.raffleTiers} onPlayRaffle={handlePlayRaffle} />;
+        return <RafflesPage 
+          raffleTiers={MOCK_STATIC_DATA.lottoTiers} 
+          onPlayScheduledRaffle={handlePlayLotto}
+          adminSettings={adminSettings}
+          raffleDraws={lottoDraws}
+          currentUserData={currentUserData}
+          onDisableAutoPlay={handleDisableAutoPlay}
+        />;
       case 'play':
         return <PlayPage 
           onSpinWheel={() => setShowSpinWheel(true)}
-          onStartTrivia={() => setShowTriviaModal(true)}
+          onStartWeeklyTrivia={handleStartWeeklyTrivia}
           onStartMining={() => setShowMinerModal(true)}
+          onStartScholarshipQuiz={() => setShowScholarshipQuizModal(true)}
         />;
        case 'referrals':
         return <ReferralPage user={currentUser} />;
@@ -333,9 +624,19 @@ const App: React.FC = () => {
           onWithdraw={() => setShowWithdrawModal(true)}
         />;
       case 'profile':
-        return <ProfilePage user={currentUser} onVerifyKyc={handleVerifyKyc} setActiveTab={setActiveTab} />;
+        return <ProfilePage user={currentUser} userData={currentUserData} onVerifyKyc={handleVerifyKyc} setActiveTab={setActiveTab} onAvatarUpdate={handleAvatarUpdate} />;
       case 'admin':
-        return <AdminPage users={users} allUsersData={usersData} />;
+        if (userRole !== 'admin') {
+          setActiveTab('home');
+          return null;
+        }
+        return <AdminPage 
+            users={users} 
+            allUsersData={usersData} 
+            adminSettings={adminSettings}
+            setAdminSettings={setAdminSettings}
+            showNotification={showNotification}
+         />;
       default:
         return <div className="container mx-auto px-4 text-center text-gray-400">
           <p className="mt-16 text-lg">
@@ -347,7 +648,14 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-space-dark font-sans">
-      <Header setActiveTab={setActiveTab} pointsBalance={currentUserData.pointsWallet.balance} onLogout={handleLogout} />
+      <Header 
+        activeTab={activeTab}
+        setActiveTab={setActiveTab} 
+        pointsBalance={currentUserData.pointsWallet.balance} 
+        onLogout={handleLogout}
+        currentUser={currentUser}
+        userRole={userRole}
+      />
       <NotificationBanner />
       <main className="pt-20 pb-24 md:pb-8">
         {renderContent()}
@@ -355,7 +663,7 @@ const App: React.FC = () => {
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
       
       {/* --- Modals & Splashes --- */}
-      <SupernovaWinSplash isOpen={showWinSplash} onClose={() => setShowWinSplash(false)} result={lastRaffleResult} />
+      <SupernovaWinSplash isOpen={showWinSplash} onClose={() => setShowWinSplash(false)} result={lastLottoResult} />
       <WormholeLossSplash isOpen={showLossSplash} onClose={() => setShowLossSplash(false)} />
 
       <DepositModal 
@@ -383,7 +691,7 @@ const App: React.FC = () => {
        <SpinWheelModal
         isOpen={showSpinWheel}
         onClose={() => setShowSpinWheel(false)}
-        prizes={STATIC_DATA.spinWheelPrizes}
+        prizes={MOCK_STATIC_DATA.spinWheelPrizes}
         onSpinEnd={handleSpinWin}
       />
       <TriviaModal
@@ -391,24 +699,20 @@ const App: React.FC = () => {
         onClose={() => setShowTriviaModal(false)}
         questions={MOCK_TRIVIA_QUESTIONS}
         onComplete={handleTriviaEnd}
+        title="Weekly Free Trivia"
+      />
+      <ScholarshipQuizModal
+        isOpen={showScholarshipQuizModal}
+        onClose={() => setShowScholarshipQuizModal(false)}
+        questions={MOCK_SCHOLARSHIP_QUESTIONS}
+        onComplete={handleScholarshipQuizEnd}
+        winChance={1 / adminSettings.scholarshipWinRate}
       />
       <StarstoneMinerModal
         isOpen={showMinerModal}
         onClose={() => setShowMinerModal(false)}
         onComplete={handleMiningEnd}
       />
-      
-      <Modal isOpen={!!playTier} onClose={() => setPlayTier(null)} title="Confirm Hyperdrive Jump">
-        {playTier && (
-          <div>
-            <p className="mb-6">Engage thrusters for the <span className="font-bold text-star-yellow">{playTier.level}</span> raffle? This will consume <span className="font-bold text-star-yellow">${playTier.entryFee}</span> from your Deposit Tanks.</p>
-            <div className="flex justify-end space-x-4">
-                <button onClick={() => setPlayTier(null)} className="px-4 py-2 bg-space-border rounded-lg hover:bg-gray-600">Cancel</button>
-                <button onClick={confirmPlay} className="px-4 py-2 bg-cyber-pink text-white rounded-lg hover:bg-pink-700 shadow-glow-pink">Confirm Jump</button>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 };
@@ -418,10 +722,10 @@ const SupernovaWinSplash: React.FC<{ isOpen: boolean, onClose: () => void, resul
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex flex-col justify-center items-center z-50 text-center p-4">
             <div className="animate-supernova">
-                <h1 className="text-6xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-star-yellow to-amber-300" style={{ textShadow: '0 0 30px rgba(251, 191, 36, 0.8)' }}>SUPERNOVA!</h1>
-                <p className="text-2xl text-white mt-2">You won the {result.tier} raffle!</p>
+                <h1 className="text-6xl md:text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-star-yellow to-amber-300" style={{ textShadow: '0 0 30px rgba(251, 191, 36, 0.8)' }}>JACKPOT!</h1>
+                <p className="text-2xl text-white mt-2">You won the {result.tier} lotto!</p>
                 <p className="text-5xl font-bold text-nova-green mt-6" style={{ textShadow: '0 0 20px rgba(52, 211, 153, 0.7)' }}>+${result.prize.toFixed(2)}</p>
-                <p className="text-gray-300 mt-2">The credits have been added to your withdrawable wallet.</p>
+                <p className="text-gray-300 mt-2">The credits have been added to your winnings wallet.</p>
             </div>
             <button onClick={onClose} className="mt-12 bg-star-yellow text-space-dark font-bold py-3 px-8 rounded-lg text-lg hover:scale-105 transition">Continue</button>
         </div>
@@ -433,9 +737,9 @@ const WormholeLossSplash: React.FC<{ isOpen: boolean, onClose: () => void }> = (
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex flex-col justify-center items-center z-50 text-center p-4">
             <div className="animate-wormhole">
-                <div className="text-8xl md:text-9xl">👽</div>
-                <h1 className="text-4xl md:text-5xl font-bold text-cyber-pink mt-4">Wormhole Collapsed!</h1>
-                <p className="text-lg text-gray-300 mt-2">Transmission lost... Better luck on the next jump!</p>
+                <div className="text-8xl md:text-9xl">🤔</div>
+                <h1 className="text-4xl md:text-5xl font-bold text-cyber-pink mt-4">Better Luck Next Time!</h1>
+                <p className="text-lg text-gray-300 mt-2 max-w-sm">Your numbers didn't match this time. Don't worry, another draw is coming soon!</p>
             </div>
             <button onClick={onClose} className="mt-12 bg-cyber-pink text-white font-bold py-3 px-8 rounded-lg text-lg hover:scale-105 transition">Try Again</button>
         </div>
@@ -610,7 +914,7 @@ const ConvertModal: React.FC<{
 }> = ({ isOpen, onClose, onConvert, pointsBalance }) => {
     const [points, setPoints] = useState('');
     const pointsToConvert = parseInt(points) || 0;
-    const conversionRate = 1000; // 1000 points = $1
+    const conversionRate = 1000;
     const convertedValue = (pointsToConvert / conversionRate).toFixed(2);
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -681,7 +985,7 @@ const SpinWheelModal: React.FC<{
             setSpinning(false);
             onSpinEnd(prizes[winnerIndex]);
             onClose();
-        }, 5000); // Corresponds to animation duration
+        }, 5000);
     }
 
     return (

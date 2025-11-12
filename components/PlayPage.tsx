@@ -1,12 +1,14 @@
 
+
 import React from 'react';
 
-const GameCard: React.FC<{ title: string; description: string; icon: string; buttonText: string; onPlay: () => void; theme: 'pink' | 'yellow' | 'green'; }> = 
+const GameCard: React.FC<{ title: string; description: string; icon: string; buttonText: string; onPlay: () => void; theme: 'pink' | 'yellow' | 'green' | 'blue'; }> = 
 ({ title, description, icon, buttonText, onPlay, theme }) => {
     const themeClasses = {
         pink: { text: 'text-cyber-pink', shadow: 'shadow-glow-pink' },
         yellow: { text: 'text-star-yellow', shadow: 'shadow-glow-yellow' },
         green: { text: 'text-nova-green', shadow: 'shadow-glow-green' },
+        blue: { text: 'text-blue-400', shadow: 'shadow-glow-blue' },
     }
     const config = themeClasses[theme];
 
@@ -30,15 +32,16 @@ const GameCard: React.FC<{ title: string; description: string; icon: string; but
 
 interface PlayPageProps {
     onSpinWheel: () => void;
-    onStartTrivia: () => void;
+    onStartWeeklyTrivia: () => void;
     onStartMining: () => void;
+    onStartScholarshipQuiz: () => void;
 }
 
-export const PlayPage: React.FC<PlayPageProps> = ({ onSpinWheel, onStartTrivia, onStartMining }) => {
+export const PlayPage: React.FC<PlayPageProps> = ({ onSpinWheel, onStartWeeklyTrivia, onStartMining, onStartScholarshipQuiz }) => {
   return (
     <div className="container mx-auto px-4">
         <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold tracking-wider">GAME ZONE</h1>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-wider">GAME ZONE</h1>
             <p className="text-gray-400">Accept missions, test your skills, and earn rewards.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -51,25 +54,29 @@ export const PlayPage: React.FC<PlayPageProps> = ({ onSpinWheel, onStartTrivia, 
                 theme="yellow"
             />
              <GameCard 
-                title="Astro-Trivia"
-                description="Answer cosmic questions to win a share of the prize pool. New quiz every cycle."
+                title="Weekly Free Trivia"
+                description="Answer challenging questions to win a share of the prize pool. Must have $5 to play."
                 icon="fas fa-brain"
                 buttonText="Start Quiz"
-                onPlay={onStartTrivia}
+                onPlay={onStartWeeklyTrivia}
                 theme="pink"
             />
              <GameCard 
-                title="Starstone Miner"
-                description="Click the cosmic stone to mine for valuable EXP. Each expedition has limited power!"
+                title="Gem Collector"
+                description="Click the shining gem to collect valuable EXP. Each session has limited energy!"
                 icon="fas fa-gem"
-                buttonText="Start Mining"
+                buttonText="Start Collecting"
                 onPlay={onStartMining}
                 theme="green"
             />
-            <div className="md:col-span-2 bg-space-card p-6 rounded-xl shadow-lg border border-space-border text-center">
-                <h3 className="text-xl font-bold text-gray-300">More Games Transmitting Soon!</h3>
-                <p className="text-gray-400 mt-2">Our engineers are developing new simulations. Stay tuned for the next transmission!</p>
-            </div>
+             <GameCard 
+                title="Scholarship Quiz"
+                description="Ace the monthly academic challenge to win educational grants and scholarships."
+                icon="fas fa-graduation-cap"
+                buttonText="Take Test"
+                onPlay={onStartScholarshipQuiz}
+                theme="blue"
+            />
         </div>
     </div>
   );

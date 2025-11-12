@@ -1,4 +1,5 @@
 
+
 export interface Wallet {
   totalDeposited: number;
   totalSpent: number;
@@ -26,7 +27,7 @@ export interface Referral {
 }
 
 export interface User {
-  id: string;
+  id:string;
   name: string;
   email: string;
   avatarUrl: string;
@@ -35,22 +36,18 @@ export interface User {
   referrals: Referral[];
 }
 
-export interface RaffleTier {
+export interface LottoTier {
   level: 'Basic' | 'Intermediate' | 'Pro';
   entryFee: number;
   prizeRange: string;
   prizePool: number;
   drawTime: Date;
-  celestialBody: {
-      name: string;
-      className: string;
-  };
 }
 
 export enum TransactionType {
   DEPOSIT = 'Deposit',
-  RAFFLE_WIN = 'Raffle Win',
-  RAFFLE_ENTRY = 'Raffle Entry',
+  LOTTO_WIN = 'Lotto Win',
+  LOTTO_ENTRY = 'Lotto Entry',
   REFERRAL_BONUS = 'Referral Bonus',
   WITHDRAWAL = 'Withdrawal',
   WITHDRAWAL_FEE = 'Withdrawal Fee',
@@ -78,7 +75,7 @@ export interface Notification {
 }
 
 export interface CoinCharacter {
-  id: string;
+  id:string;
   name: string;
   rarity: 'Common' | 'Uncommon' | 'Rare' | 'Mythic';
   icon: string; // font-awesome icon class
@@ -107,4 +104,72 @@ export interface TriviaQuestion {
     options: string[];
     correctAnswerIndex: number;
     points: number;
+}
+
+export interface ScholarshipQuestion {
+    question: string;
+    options: string[];
+    correctAnswerIndex: number;
+}
+
+export interface Winner {
+  id: string;
+  name: string;
+  avatarUrl: string;
+  prize: number;
+  tier: 'Basic' | 'Intermediate' | 'Pro';
+}
+
+export interface Ad {
+  id: string;
+  title: string;
+  description: string;
+  ctaText: string;
+  imageUrl: string;
+  theme: 'pink' | 'yellow' | 'green' | 'blue';
+}
+
+export interface AdminSettings {
+    raffleWinRate: number;
+    spinWinRate: number;
+    triviaWinRate: number;
+    scholarshipWinRate: number;
+    raffleParticipants: number;
+    spinParticipants: number;
+    triviaParticipants: number;
+    scholarshipParticipants: number;
+}
+
+export interface UserLottoEntry {
+    drawId: string;
+    drawTime: Date;
+    userNumbers: number[];
+    tier: 'Basic' | 'Intermediate' | 'Pro';
+    amount: number;
+    status: 'Pending' | 'Win' | 'Loss';
+    prize: number;
+    winningNumbers?: number[];
+}
+
+export interface LottoDraw {
+    id: string; // ISO string of the draw time
+    drawTime: Date;
+    winningNumbers: number[];
+    status: 'Upcoming' | 'Drawing' | 'Finished';
+    processedForAutoPlay?: boolean;
+}
+
+export interface UserData {
+    depositWallet: Wallet;
+    withdrawableWallet: WithdrawableWallet;
+    pointsWallet: PointsWallet;
+    transactions: Transaction[];
+    coinCharacters: CoinCharacter[];
+    lottoEntries: UserLottoEntry[];
+    autoPlayConfig?: {
+        enabled: boolean;
+        amount: number;
+        numbers: number[];
+        tier: 'Basic' | 'Intermediate' | 'Pro';
+    } | null;
 }

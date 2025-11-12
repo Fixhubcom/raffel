@@ -1,5 +1,7 @@
+
+
 import React, { useState, useMemo } from 'react';
-import type { User, Transaction, Wallet, WithdrawableWallet, PointsWallet } from '../types';
+import type { User, Transaction, UserData, AdminSettings } from '../types';
 import { TransactionType } from '../types';
 import { Modal } from './Modal';
 
@@ -27,25 +29,6 @@ const AdminStatCard: React.FC<{ title: string; value: string; icon: string; them
     )
 };
 
-const ChartCard: React.FC<{ title: string }> = ({ title }) => {
-    // Mock data for the chart
-    const data = [12, 19, 3, 5, 2, 3, 9];
-    const max = Math.max(...data);
-
-    return (
-        <div className="bg-space-card p-5 rounded-lg border border-space-border col-span-1 md:col-span-2">
-            <h3 className="text-lg font-bold mb-4 tracking-wider">{title}</h3>
-            <div className="flex items-end justify-between h-48">
-                {data.map((value, index) => (
-                    <div key={index} className="flex-1 flex flex-col items-center justify-end h-full px-1">
-                        <div className="w-full bg-space-blue hover:bg-cyber-pink transition-colors rounded-t-md" style={{ height: `${(value / max) * 100}%` }}></div>
-                        <span className="text-xs text-gray-400 mt-2">Day {index + 1}</span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
 
 const TransactionRow: React.FC<{ tx: Transaction }> = ({ tx }) => {
     const isCredit = tx.amount > 0;
@@ -63,14 +46,6 @@ const TransactionRow: React.FC<{ tx: Transaction }> = ({ tx }) => {
             </p>
         </div>
     );
-};
-
-// FIX: Define a specific type for user data to improve type safety and fix inference issues.
-type UserData = {
-    depositWallet: Wallet,
-    withdrawableWallet: WithdrawableWallet,
-    pointsWallet: PointsWallet,
-    transactions: Transaction[],
 };
 
 const UserDetailModal: React.FC<{ user: User; userData: UserData, onClose: () => void }> = ({ user, userData, onClose }) => (
@@ -114,19 +89,33 @@ const UserDetailModal: React.FC<{ user: User; userData: UserData, onClose: () =>
     </Modal>
 );
 
+const SettingsCard: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
+    <div className="bg-space-card p-5 rounded-lg border border-space-border">
+        <h3 className="text-lg font-bold mb-4 tracking-wider text-star-yellow">{title}</h3>
+        <div className="space-y-4">
+            {children}
+        </div>
+    </div>
+);
+
+
 interface AdminPageProps {
     users: User[];
     allUsersData: Record<string, UserData>;
+    adminSettings: AdminSettings;
+    setAdminSettings: React.Dispatch<React.SetStateAction<AdminSettings>>;
+    showNotification: (type: 'success' | 'error' | 'info', message: string) => void;
 }
 
-export const AdminPage: React.FC<AdminPageProps> = ({ users, allUsersData }) => {
+export const AdminPage: React.FC<AdminPageProps> = ({ users, allUsersData, adminSettings, setAdminSettings, showNotification }) => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [dummyWinnerUser, setDummyWinnerUser] = useState<string>(users[0]?.id || '');
+  const [dummyWinnerGame, setDummyWinnerGame] = useState<string>('Raffle');
 
   const stats = useMemo(() => {
     let totalDeposited = 0;
     let totalWithdrawable = 0;
     let kycVerified = 0;
-    // FIX: Explicitly type `data` to resolve `unknown` type inference from Object.values, fixing access to `depositWallet` and `withdrawableWallet`.
     Object.values(allUsersData).forEach((data: UserData) => {
         totalDeposited += data.depositWallet.totalDeposited;
         totalWithdrawable += data.withdrawableWallet.balance;
@@ -134,15 +123,25 @@ export const AdminPage: React.FC<AdminPageProps> = ({ users, allUsersData }) => 
     users.forEach(u => {
         if (u.kycVerified) kycVerified++;
     });
-
     return { totalDeposited, totalWithdrawable, kycVerified };
   }, [users, allUsersData]);
   
+  const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { name, value } = e.target;
+      setAdminSettings(prev => ({...prev, [name]: parseInt(value, 10)}));
+  };
+
+  const assignDummyWinner = () => {
+    const user = users.find(u => u.id === dummyWinnerUser);
+    if(user) {
+        showNotification('success', `${user.name} has been assigned as a dummy winner for the ${dummyWinnerGame}.`);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 space-y-8">
         <div className="text-center">
-            <h1 className="text-4xl font-bold tracking-wider">ADMIN CONTROL</h1>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-wider">ADMIN CONTROL</h1>
             <p className="text-gray-400">System-wide overview and user management.</p>
         </div>
 
@@ -153,12 +152,53 @@ export const AdminPage: React.FC<AdminPageProps> = ({ users, allUsersData }) => 
             <AdminStatCard title="Total Withdrawable" value={formatCurrency(stats.totalWithdrawable)} icon="fa-hand-holding-usd" theme="pink" />
         </section>
 
-        <section id="admin-charts" className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ChartCard title="New User Signups (Last 7 Days)" />
+        <section id="admin-settings" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+                 <SettingsCard title="Game & Platform Settings">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300">Raffle Win Rate (1 in X)</label>
+                        <input type="range" name="raffleWinRate" min="1" max="1000" value={adminSettings.raffleWinRate} onChange={handleSettingsChange} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+                        <span className="text-white font-bold">{adminSettings.raffleWinRate}</span>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300">Scholarship Win Rate (1 in X)</label>
+                        <input type="range" name="scholarshipWinRate" min="1" max="1000" value={adminSettings.scholarshipWinRate} onChange={handleSettingsChange} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+                        <span className="text-white font-bold">{adminSettings.scholarshipWinRate}</span>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300">Raffle Participants (Display)</label>
+                        <input type="number" name="raffleParticipants" value={adminSettings.raffleParticipants} onChange={handleSettingsChange} className="w-full bg-space-border p-2 rounded-md text-white mt-1 focus:ring-2 focus:ring-cyber-pink outline-none" />
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-300">Scholarship Participants (Display)</label>
+                        <input type="number" name="scholarshipParticipants" value={adminSettings.scholarshipParticipants} onChange={handleSettingsChange} className="w-full bg-space-border p-2 rounded-md text-white mt-1 focus:ring-2 focus:ring-cyber-pink outline-none" />
+                    </div>
+                </SettingsCard>
+            </div>
+            <div>
+                 <SettingsCard title="Manual Winner Assignment">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Select Game</label>
+                        <select value={dummyWinnerGame} onChange={e => setDummyWinnerGame(e.target.value)} className="w-full bg-space-border p-2 rounded-md text-white focus:ring-2 focus:ring-cyber-pink outline-none">
+                            <option>Raffle</option>
+                            <option>Spin & Win</option>
+                            <option>Scholarship Quiz</option>
+                            <option>Weekly Trivia</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Select User</label>
+                         <select value={dummyWinnerUser} onChange={e => setDummyWinnerUser(e.target.value)} className="w-full bg-space-border p-2 rounded-md text-white focus:ring-2 focus:ring-cyber-pink outline-none">
+                            {users.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+                        </select>
+                    </div>
+                    <button onClick={assignDummyWinner} className="w-full bg-cyber-pink text-white font-bold py-2 px-4 rounded-lg hover:bg-pink-700 transition shadow-glow-pink">Assign Dummy Winner</button>
+                 </SettingsCard>
+            </div>
         </section>
 
         <section id="user-management">
-            <h2 className="text-2xl font-bold mb-4 tracking-wider">User Management</h2>
+            <h2 className="text-xl md:text-2xl font-bold mb-4 tracking-wider">User Management</h2>
             <div className="bg-space-card p-4 rounded-lg shadow-lg border border-space-border overflow-x-auto">
                 <table className="w-full text-left">
                     <thead>

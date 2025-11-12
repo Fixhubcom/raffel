@@ -1,8 +1,10 @@
 
 import React from 'react';
-import type { Wallet, WithdrawableWallet, PointsWallet, RaffleTier, Transaction, CoinCharacter } from '../types';
+import type { Wallet, WithdrawableWallet, PointsWallet, LottoTier, Transaction, CoinCharacter, Winner, Ad } from '../types';
 import { TransactionType } from '../types';
 import { CountdownTimer } from './CountdownTimer';
+import { WinnersTicker } from './WinnersTicker';
+import { AdsBanner } from './AdsBanner';
 
 const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -32,7 +34,7 @@ const QuickActionButton: React.FC<{ label: string; icon: string; onClick?: () =>
 );
 
 
-const RaffleTierCard: React.FC<{ tier: RaffleTier, onViewRaffles: () => void }> = ({ tier, onViewRaffles }) => {
+const LottoTierCard: React.FC<{ tier: LottoTier, onViewLotto: () => void }> = ({ tier, onViewLotto }) => {
     const tierConfig = {
         Basic: {
             borderColor: 'border-blue-500',
@@ -71,7 +73,7 @@ const RaffleTierCard: React.FC<{ tier: RaffleTier, onViewRaffles: () => void }> 
                     <CountdownTimer targetDate={tier.drawTime} glowColor={config.glowColor} />
                 </div>
                 <button 
-                  onClick={onViewRaffles}
+                  onClick={onViewLotto}
                   className={`w-full font-bold text-lg py-3 rounded-lg transition transform hover:scale-105 border ${config.borderColor} bg-black/30 hover:bg-black/50 ${config.shadow}`}
                   style={{ textShadow: `0 0 5px ${config.glowColor}` }}
                 >
@@ -114,8 +116,8 @@ const CoinCharacterCard: React.FC<{ coin: CoinCharacter }> = ({ coin }) => {
 const TransactionRow: React.FC<{ tx: Transaction }> = ({ tx }) => {
     const typeInfo = {
         [TransactionType.DEPOSIT]: { icon: 'fa-download', color: 'text-nova-green' },
-        [TransactionType.RAFFLE_WIN]: { icon: 'fa-trophy', color: 'text-star-yellow' },
-        [TransactionType.RAFFLE_ENTRY]: { icon: 'fa-ticket-alt', color: 'text-cyber-pink' },
+        [TransactionType.LOTTO_WIN]: { icon: 'fa-trophy', color: 'text-star-yellow' },
+        [TransactionType.LOTTO_ENTRY]: { icon: 'fa-ticket-alt', color: 'text-cyber-pink' },
         [TransactionType.REFERRAL_BONUS]: { icon: 'fa-users', color: 'text-blue-400' },
         [TransactionType.WITHDRAWAL]: { icon: 'fa-upload', color: 'text-red-400' },
         [TransactionType.WITHDRAWAL_FEE]: { icon: 'fa-file-invoice-dollar', color: 'text-red-400' },
@@ -147,24 +149,26 @@ interface DashboardProps {
   depositWallet: Wallet;
   withdrawableWallet: WithdrawableWallet;
   pointsWallet: PointsWallet;
-  raffleTiers: RaffleTier[];
+  lottoTiers: LottoTier[];
   transactions: Transaction[];
   coinCharacters: CoinCharacter[];
+  recentWinners: Winner[];
+  ads: Ad[];
   onConvert: () => void;
   setActiveTab: (tab: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ depositWallet, withdrawableWallet, pointsWallet, raffleTiers, transactions, coinCharacters, onConvert, setActiveTab }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ depositWallet, withdrawableWallet, pointsWallet, lottoTiers, transactions, coinCharacters, recentWinners, ads, onConvert, setActiveTab }) => {
     return (
         <div className="container mx-auto px-4 space-y-6">
             <div className="text-center mb-4">
-                <h1 className="text-4xl font-bold tracking-wider">CAPTAIN'S DECK</h1>
+                <h1 className="text-3xl md:text-4xl font-bold tracking-wider">PLAYER DASHBOARD</h1>
                 <p className="text-gray-400">Overview of your resources and activities.</p>
             </div>
 
             <section id="wallets" className="space-y-3 md:space-y-0 md:flex md:space-x-4">
-                <WalletSummaryCard title="Deposit Tanks" balance={formatCurrency(depositWallet.availableBalance)} icon="fa-wallet" shadowColor="rgba(59, 130, 246, 0.5)" />
-                <WalletSummaryCard title="Winnable Credits" balance={formatCurrency(withdrawableWallet.balance)} icon="fa-hand-holding-usd" shadowColor="rgba(52, 211, 153, 0.5)" />
+                <WalletSummaryCard title="DEPOSIT WALLET" balance={formatCurrency(depositWallet.availableBalance)} icon="fa-wallet" shadowColor="rgba(59, 130, 246, 0.5)" />
+                <WalletSummaryCard title="WINNINGS WALLET" balance={formatCurrency(withdrawableWallet.balance)} icon="fa-hand-holding-usd" shadowColor="rgba(52, 211, 153, 0.5)" />
                 <WalletSummaryCard title="EXP Points" balance={pointsWallet.balance.toLocaleString()} icon="fa-star" shadowColor="rgba(251, 191, 36, 0.5)" />
             </section>
             
@@ -177,22 +181,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ depositWallet, withdrawabl
                  </div>
             </section>
             
+            <AdsBanner ads={ads} />
+
+            <WinnersTicker winners={recentWinners} />
+
             <section id="raffles">
-                <h2 className="text-2xl font-bold mb-4 tracking-wider">RAFFLE CONSTELLATIONS</h2>
+                <h2 className="text-xl md:text-2xl font-bold mb-4 tracking-wider">LOTTERY DRAWS</h2>
                 <div className="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4 md:grid md:grid-cols-3 md:gap-6 md:space-x-0 md:mx-0 md:px-0">
-                    {raffleTiers.map(tier => <RaffleTierCard key={tier.level} tier={tier} onViewRaffles={() => setActiveTab('raffles')} />)}
+                    {lottoTiers.map(tier => <LottoTierCard key={tier.level} tier={tier} onViewLotto={() => setActiveTab('raffles')} />)}
                 </div>
             </section>
             
             <section id="coin-collection">
-                <h2 className="text-2xl font-bold mb-4 tracking-wider">ARTIFACT COLLECTION</h2>
+                <h2 className="text-xl md:text-2xl font-bold mb-4 tracking-wider">COLLECTION</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {coinCharacters.map(coin => <CoinCharacterCard key={coin.id} coin={coin} />)}
                 </div>
             </section>
 
              <section id="transactions">
-                <h2 className="text-2xl font-bold mb-2 tracking-wider">MISSION LOG</h2>
+                <h2 className="text-xl md:text-2xl font-bold mb-2 tracking-wider">ACTIVITY LOG</h2>
                 <div className="bg-space-card/70 p-4 rounded-lg shadow-lg border border-space-border">
                     {transactions.length > 0 ? transactions.slice(0, 5).map(tx => <TransactionRow key={tx.id} tx={tx} />) : <p className="text-center text-gray-400 py-4">No recent activity.</p>}
                 </div>

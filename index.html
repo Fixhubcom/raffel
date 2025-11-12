@@ -1,10 +1,13 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Raffle Platform</title>
+    <title>LuckiLotto Platform</title>
+    <meta name="theme-color" content="#0D0F1A">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,36 +39,49 @@
       }
     </script>
     <style>
-      @keyframes move-stars {
+      @keyframes anim-move-nebula {
+        from { background-position: 0 0; }
+        to { background-position: 1000px 2000px; }
+      }
+      @keyframes anim-move-stars {
+        from { background-position: 0 0; }
+        to { background-position: -5000px 2500px; }
+      }
+      @keyframes anim-move-twinkling {
         from { background-position: 0 0; }
         to { background-position: -10000px 5000px; }
       }
-      .stars {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        height: 100%;
-        display: block;
-      }
-      .stars {
-        background: #0D0F1A url(https://www.transparenttextures.com/patterns/stardust.png) repeat;
-        z-index: 0;
-      }
-      .stars-animation {
+
+      .stars-background {
         position: fixed;
-        width: 100%;
-        height: 100%;
-        background-image: 
-          url('https://assets.codepen.io/128313/stars.svg'),
-          url('https://assets.codepen.io/128313/twinkling.svg');
-        background-position: 0 0;
+        top: 0; left: 0; right: 0; bottom: 0;
+        width: 100%; height: 100%;
+        display: block;
+        background: #0D0F1A url(https://www.transparenttextures.com/patterns/stardust.png) repeat;
+        animation: anim-move-nebula 500s linear infinite;
+        z-index: -3;
+      }
+
+      .stars-background::before {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+        background-image: url('https://assets.codepen.io/128313/stars.svg');
         background-repeat: repeat;
-        animation: move-stars 200s linear infinite;
+        background-position: 0 0;
+        animation: anim-move-stars 400s linear infinite;
+        z-index: -2;
+      }
+
+      .stars-background::after {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+        background-image: url('https://assets.codepen.io/128313/twinkling.svg');
+        background-repeat: repeat;
+        background-position: 0 0;
+        animation: anim-move-twinkling 200s linear infinite;
         z-index: -1;
       }
+
 
       @keyframes supernova {
         0% { transform: scale(0); opacity: 0; }
@@ -157,6 +173,55 @@
       .animate-pulse-slow {
         animation: pulse-slow 3s infinite;
       }
+
+      /* Confetti animation for winner splash */
+      @keyframes confetti-fall {
+        0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(200px) rotate(720deg); opacity: 0; }
+      }
+      .confetti {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background-color: #fbb03b;
+        opacity: 0;
+        animation: confetti-fall 2s ease-out infinite;
+      }
+      
+      /* Winner Ticker Animation */
+      @keyframes scroll-ticker {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+      }
+
+      .ticker-wrap {
+          width: 100%;
+          overflow: hidden;
+          background: linear-gradient(90deg, rgba(13,15,26,0) 0%, rgba(25,30,56,0.5) 15%, rgba(25,30,56,0.5) 85%, rgba(13,15,26,0) 100%);
+          border-top: 1px solid #3A427D;
+          border-bottom: 1px solid #3A427D;
+      }
+
+      .ticker-move {
+          display: inline-flex;
+          animation: scroll-ticker 40s linear infinite;
+      }
+
+      .ticker-item {
+          flex-shrink: 0;
+          width: auto;
+          min-width: 220px;
+          margin: 0 1rem;
+      }
+
+      /* Ads Banner Animation */
+      @keyframes ad-fade-in {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-ad-fade-in {
+        animation: ad-fade-in 0.8s ease-out forwards;
+      }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script type="importmap">
@@ -170,7 +235,7 @@
 </script>
 </head>
   <body class="bg-space-dark text-white font-sans">
-    <div class="stars-animation"></div>
+    <div class="stars-background"></div>
     <div id="root" class="relative z-10"></div>
   </body>
 </html>
