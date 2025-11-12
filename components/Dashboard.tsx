@@ -86,25 +86,47 @@ const LottoTierCard: React.FC<{ tier: LottoTier, onViewLotto: () => void }> = ({
 
 const CoinCharacterCard: React.FC<{ coin: CoinCharacter }> = ({ coin }) => {
     const rarityStyles = {
-        Common: 'border-gray-500 text-gray-300',
-        Uncommon: 'border-green-500 text-green-400',
-        Rare: 'border-blue-500 text-blue-400 shadow-glow-blue',
-        Mythic: 'border-purple-500 text-purple-400 shadow-glow-purple',
+        Common: { // Bronze
+            metal: 'bg-gradient-to-br from-yellow-700 via-amber-800 to-yellow-900',
+            shadow: 'shadow-[inset_0_4px_8px_rgba(0,0,0,0.6),_0_4px_10px_rgba(0,0,0,0.5)]',
+            iconColor: 'text-amber-200',
+            ring: 'ring-amber-800'
+        },
+        Uncommon: { // Silver
+            metal: 'bg-gradient-to-br from-slate-300 via-slate-400 to-slate-500',
+            shadow: 'shadow-[inset_0_4px_8px_rgba(0,0,0,0.6),_0_4px_10px_rgba(0,0,0,0.5)]',
+            iconColor: 'text-slate-800',
+            ring: 'ring-slate-300'
+        },
+        Rare: { // Gem-like Blue
+            metal: 'bg-gradient-to-br from-blue-400 via-blue-600 to-indigo-800',
+            shadow: 'shadow-[inset_0_4px_8px_rgba(0,0,0,0.6),_0_4px_10px_rgba(0,0,0,0.5)] shadow-glow-blue',
+            iconColor: 'text-blue-100',
+            ring: 'ring-blue-400'
+        },
+        Mythic: { // Gold
+            metal: 'bg-gradient-to-br from-yellow-300 via-amber-400 to-yellow-500',
+            shadow: 'shadow-[inset_0_2px_6px_rgba(255,255,255,0.4),_0_4px_10px_rgba(251,191,36,0.6)] shadow-glow-yellow',
+            iconColor: 'text-yellow-800',
+            ring: 'ring-amber-400'
+        },
     };
     
+    const config = rarityStyles[coin.rarity];
+    
     return (
-        <div className={`relative h-48 flex flex-col justify-between p-3 rounded-lg shadow-lg border-2 border-space-border/50 text-white overflow-hidden transition-transform transform hover:-translate-y-2 ${coin.bgColor}`}>
-            <div className="absolute -bottom-4 -right-4 text-5xl opacity-10">
-                <i className={coin.icon}></i>
+        <div className={`group relative w-full h-56 flex flex-col justify-center items-center p-3 rounded-lg text-white transition-transform transform hover:-translate-y-2`}>
+            {/* The 3D coin */}
+            <div className={`relative w-36 h-36 rounded-full flex items-center justify-center ${config.metal} ${config.shadow} ring-8 ${config.ring} cursor-pointer transition-transform group-hover:scale-110`}>
+                 <i className={`${coin.icon} text-6xl ${config.iconColor} drop-shadow-lg`}></i>
+                 {/* Shine effect */}
+                 <div className="absolute top-0 left-0 w-full h-full rounded-full overflow-hidden">
+                    <div className="w-1/2 h-full bg-white/20 blur-xl transform -skew-x-12 translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-700 ease-in-out"></div>
+                 </div>
             </div>
-            <div className="z-10">
-                <div className="text-3xl">
-                    <i className={coin.icon}></i>
-                </div>
-            </div>
-            <div className="z-10 text-right">
-                <h4 className="font-bold">{coin.name}</h4>
-                <p className={`text-xs font-semibold px-2 py-0.5 inline-block rounded-full border ${rarityStyles[coin.rarity]}`}>
+            <div className="mt-4 text-center">
+                <h4 className="font-bold text-lg">{coin.name}</h4>
+                <p className={`text-sm font-semibold text-gray-400`}>
                     {coin.rarity}
                 </p>
             </div>
@@ -194,8 +216,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ depositWallet, withdrawabl
             
             <section id="coin-collection">
                 <h2 className="text-xl md:text-2xl font-bold mb-4 tracking-wider">COLLECTION</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    {coinCharacters.map(coin => <CoinCharacterCard key={coin.id} coin={coin} />)}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {coinCharacters.slice(0, 4).map(coin => <CoinCharacterCard key={coin.id} coin={coin} />)}
                 </div>
             </section>
 

@@ -1,8 +1,9 @@
 
 
+
 import React, { useState, useEffect } from 'react';
-import type { User, Wallet, WithdrawableWallet, PointsWallet, LottoTier, Transaction, CoinCharacter, SpinWheelPrize, Referral, TriviaQuestion, Winner, Ad, ScholarshipQuestion, AdminSettings, UserData, LottoDraw, UserLottoEntry } from './types';
-import { TransactionType } from './types';
+import type { User, Wallet, WithdrawableWallet, PointsWallet, LottoTier, Transaction, CoinCharacter, SpinWheelPrize, Referral, TriviaQuestion, Winner, Ad, ScholarshipQuestion, AdminSettings, UserData, LottoDraw, UserLottoEntry, PlatformActivity, Notification } from './types';
+import { TransactionType, PlatformActivityType } from './types';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { Dashboard } from './components/Dashboard';
@@ -17,6 +18,7 @@ import { StarstoneMinerModal } from './components/StarstoneMinerModal';
 import { ScholarshipQuizModal } from './components/ScholarshipQuizModal';
 import LandingPage from './components/LandingPage';
 import { AdminPage } from './components/AdminPage';
+import { NotificationsModal } from './components/NotificationsModal';
 
 
 // --- INITIAL MOCKED DATA ---
@@ -101,6 +103,7 @@ const ALL_USERS_DATA: Record<string, UserData> = {
             { id: 'c4', name: 'Golden Griffin', rarity: 'Mythic', icon: 'fas fa-dragon', description: 'A legendary coin for top performers.', bgColor: 'bg-gradient-to-br from-amber-600 to-slate-800' },
         ],
         lottoEntries: [],
+        notifications: [],
         autoPlayConfig: null,
     },
     'usr_67890': {
@@ -114,6 +117,7 @@ const ALL_USERS_DATA: Record<string, UserData> = {
         ],
         coinCharacters: [{ id: 'c4', name: 'Golden Griffin', rarity: 'Mythic', icon: 'fas fa-dragon', description: 'A legendary coin for top performers.', bgColor: 'bg-gradient-to-br from-amber-600 to-slate-800' }],
         lottoEntries: [],
+        notifications: [],
         autoPlayConfig: null,
     },
     'usr_abcde': {
@@ -126,6 +130,7 @@ const ALL_USERS_DATA: Record<string, UserData> = {
         ],
         coinCharacters: [],
         lottoEntries: [],
+        notifications: [],
         autoPlayConfig: null,
     },
     'usr_fghij': {
@@ -137,6 +142,7 @@ const ALL_USERS_DATA: Record<string, UserData> = {
         ],
         coinCharacters: [{ id: 'c3', name: 'Raffle Ruby', rarity: 'Rare', icon: 'fas fa-gem', description: 'A rare gem for the dedicated player.', bgColor: 'bg-gradient-to-br from-red-700 to-slate-800' }],
         lottoEntries: [],
+        notifications: [],
         autoPlayConfig: null,
     }
 };
@@ -215,6 +221,8 @@ const App: React.FC = () => {
   const [userRole, setUserRole] = useState<'user' | 'admin' | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
+  const [platformActivityLog, setPlatformActivityLog] = useState<PlatformActivity[]>([]);
+  
   const [adminSettings, setAdminSettings] = useState<AdminSettings>({
     raffleWinRate: 100,
     spinWinRate: 8,
@@ -242,6 +250,7 @@ const App: React.FC = () => {
   const [showSpinWheel, setShowSpinWheel] = useState(false);
   const [showWinSplash, setShowWinSplash] = useState(false);
   const [showLossSplash, setShowLossSplash] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [lastLottoResult, setLastLottoResult] = useState({ prize: 0, tier: '' });
 
   // Game states
@@ -251,6 +260,43 @@ const App: React.FC = () => {
 
   const [notification, setNotification] = useState<{type: 'success' | 'error' | 'info', message: string} | null>(null);
 
+    const addActivityLog = (userId: string, type: PlatformActivityType, details: string) => {
+        const user = users.find(u => u.id === userId);
+        if (!user) return;
+
+        const newActivity: PlatformActivity = {
+            id: `act_${Date.now()}`,
+            timestamp: new Date(),
+            userId,
+            userName: user.name,
+            userAvatar: user.avatarUrl,
+            type,
+            details,
+        };
+        setPlatformActivityLog(prev => [newActivity, ...prev]);
+    };
+
+    const addNotification = (userId: string, message: string) => {
+        setUsersData(prev => {
+            const userData = prev[userId];
+            if (!userData) return prev;
+            
+            const newNotification: Notification = {
+                id: `notif_${Date.now()}`,
+                message,
+                time: new Date().toLocaleString(),
+                read: false,
+            };
+
+            const updatedUserData = {
+                ...userData,
+                notifications: [newNotification, ...userData.notifications],
+            };
+            
+            return { ...prev, [userId]: updatedUserData };
+        });
+    };
+  
   useEffect(() => {
     if (!isLoggedIn) return;
     const winnerInterval = setInterval(() => {
@@ -318,6 +364,9 @@ const App: React.FC = () => {
                                 date: new Date().toLocaleString(),
                                 status: 'Completed'
                             });
+                             const winMessage = `Congratulations! You won $${prize.toFixed(2)} in the ${entry.tier} lotto.`;
+                             addNotification(userId, winMessage);
+                             addActivityLog(userId, PlatformActivityType.LOTTO_WIN, `Won $${prize.toFixed(2)} in ${entry.tier} tier.`);
                         } else {
                             entry.status = 'Loss';
                         }
@@ -363,13 +412,18 @@ const App: React.FC = () => {
                     dataChanged = true;
                     
                     if (userId === currentUserId) {
-                         showNotification('success', `Auto-play successful! Entered next lotto for $${config.amount}.`);
+                         const autoPlayMessage = `Auto-play successful! Entered next lotto for $${config.amount}.`;
+                         showNotification('success', autoPlayMessage);
+                         addNotification(userId, autoPlayMessage);
+                         addActivityLog(userId, PlatformActivityType.LOTTO_ENTRY, `Auto-played $${config.amount} for ${config.tier} tier.`);
                     }
                 } else {
                     config.enabled = false;
                     dataChanged = true;
                     if (userId === currentUserId) {
-                         showNotification('error', 'Auto-play disabled due to insufficient funds.');
+                         const insufficientFundsMessage = 'Auto-play disabled due to insufficient funds.';
+                         showNotification('error', insufficientFundsMessage);
+                         addNotification(userId, insufficientFundsMessage);
                     }
                 }
             }
@@ -396,7 +450,8 @@ const App: React.FC = () => {
     const userId = role === 'admin' ? MOCK_USERS[1].id : MOCK_USERS[0].id;
     setCurrentUserId(userId);
     setIsLoggedIn(true);
-    setActiveTab(role === 'admin' ? 'admin' : 'home');
+    setActiveTab(role === 'admin' ? 'admin' : 'admin');
+    addActivityLog(userId, PlatformActivityType.LOGIN, 'User logged in.');
   };
 
   const handleLogout = () => {
@@ -408,6 +463,8 @@ const App: React.FC = () => {
   const handlePlayLotto = (draw: LottoDraw, tier: LottoTier, numbers: number[], amount: number, autoPlay: boolean) => {
     if (!currentUserId) return;
     
+    addActivityLog(currentUserId, PlatformActivityType.LOTTO_ENTRY, `Entered ${tier.level} lotto for $${amount}.`);
+
     setUsersData(prevData => {
         const prevUserData = prevData[currentUserId];
         if (prevUserData.depositWallet.availableBalance < amount) {
@@ -430,11 +487,16 @@ const App: React.FC = () => {
         newUserData.transactions = [entryTx, ...newUserData.transactions];
         newUserData.lottoEntries = [newEntry, ...newUserData.lottoEntries];
 
+        const playMessage = `Entered ${tier.level} lotto for ${draw.drawTime.toLocaleTimeString()}!`;
+        addNotification(currentUserId, playMessage);
+
         if (autoPlay) {
             newUserData.autoPlayConfig = { enabled: true, amount, numbers, tier: tier.level };
-            showNotification('info', 'Auto-play is enabled for subsequent draws.');
+            const autoPlayMsg = 'Auto-play is enabled for subsequent draws.';
+            showNotification('info', autoPlayMsg);
+            addNotification(currentUserId, autoPlayMsg);
         } else {
-             showNotification('success', `Entered ${tier.level} lotto for ${draw.drawTime.toLocaleTimeString()}!`);
+             showNotification('success', playMessage);
         }
 
         return { ...prevData, [currentUserId]: newUserData };
@@ -450,17 +512,24 @@ const handleDisableAutoPlay = () => {
         }
         return { ...prevData, [currentUserId]: currentUserData };
     });
-    showNotification('info', 'Auto-play has been disabled.');
+    const msg = 'Auto-play has been disabled.';
+    showNotification('info', msg);
+    addNotification(currentUserId, msg);
 };
 
 
   const handleDeposit = (amount: number, currency: string) => {
-    showNotification('info', `Deposit of ${currency === 'USD' ? '$' : ''}${amount} ${currency !== 'USD' ? currency : ''} is processing.`);
+    const depositMessage = `Deposit of ${currency === 'USD' ? '$' : ''}${amount} ${currency !== 'USD' ? currency : ''} is processing.`;
+    showNotification('info', depositMessage);
+    if (currentUserId) {
+      addActivityLog(currentUserId, PlatformActivityType.DEPOSIT, `Initiated deposit of ${amount} ${currency}.`);
+      addNotification(currentUserId, depositMessage);
+    }
     setShowDepositModal(false);
   };
 
   const handleWithdraw = (amount: number, address: string, currency: string) => {
-    if (!currentUser || !currentUserData) return;
+    if (!currentUser || !currentUserData || !currentUserId) return;
     if (amount > currentUserData.withdrawableWallet.balance) {
       showNotification('error', 'Withdrawal amount exceeds available balance.');
       return;
@@ -469,14 +538,20 @@ const handleDisableAutoPlay = () => {
       showNotification('error', 'KYC verification required for withdrawals over $10,000.');
       return;
     }
-    showNotification('success', `Withdrawal of ${amount.toFixed(2)} ${currency} to ${address} is processing.`);
+    const withdrawMessage = `Withdrawal of ${amount.toFixed(2)} ${currency} to ${address} is processing.`;
+    showNotification('success', withdrawMessage);
+    addActivityLog(currentUserId, PlatformActivityType.WITHDRAWAL, `Requested withdrawal of ${amount.toFixed(2)} ${currency}.`);
+    addNotification(currentUserId, withdrawMessage);
     setShowWithdrawModal(false);
   };
 
   const handleVerifyKyc = () => {
     if (!currentUserId) return;
     setUsers(prev => prev.map(u => u.id === currentUserId ? { ...u, kycVerified: true } : u));
-    showNotification('success', 'KYC Verification Successful!');
+    const kycMessage = 'KYC Verification Successful!';
+    showNotification('success', kycMessage);
+    addActivityLog(currentUserId, PlatformActivityType.KYC_VERIFIED, 'User passed KYC verification.');
+    addNotification(currentUserId, kycMessage);
   };
 
   const handleAvatarUpdate = (newAvatarUrl: string) => {
@@ -514,6 +589,15 @@ const handleDisableAutoPlay = () => {
     }
     showNotification('success', `You won ${prize.label}!`);
   }
+  
+  const handleMarkAllNotificationsAsRead = () => {
+      if (!currentUserId) return;
+      setUsersData(prev => {
+          const userData = { ...prev[currentUserId] };
+          userData.notifications = userData.notifications.map(n => ({ ...n, read: true }));
+          return { ...prev, [currentUserId]: userData };
+      });
+  };
 
   const handleStartWeeklyTrivia = () => {
     if (!currentUserData) return;
@@ -636,6 +720,8 @@ const handleDisableAutoPlay = () => {
             adminSettings={adminSettings}
             setAdminSettings={setAdminSettings}
             showNotification={showNotification}
+            platformActivity={platformActivityLog}
+            addActivityLog={addActivityLog}
          />;
       default:
         return <div className="container mx-auto px-4 text-center text-gray-400">
@@ -655,6 +741,9 @@ const handleDisableAutoPlay = () => {
         onLogout={handleLogout}
         currentUser={currentUser}
         userRole={userRole}
+        notifications={currentUserData.notifications}
+        hasUnreadNotifications={currentUserData.notifications.some(n => !n.read)}
+        onViewAllNotifications={() => setShowNotificationsModal(true)}
       />
       <NotificationBanner />
       <main className="pt-20 pb-24 md:pb-8">
@@ -665,6 +754,13 @@ const handleDisableAutoPlay = () => {
       {/* --- Modals & Splashes --- */}
       <SupernovaWinSplash isOpen={showWinSplash} onClose={() => setShowWinSplash(false)} result={lastLottoResult} />
       <WormholeLossSplash isOpen={showLossSplash} onClose={() => setShowLossSplash(false)} />
+      
+      <NotificationsModal 
+        isOpen={showNotificationsModal}
+        onClose={() => setShowNotificationsModal(false)}
+        notifications={currentUserData.notifications}
+        onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+      />
 
       <DepositModal 
         isOpen={showDepositModal} 

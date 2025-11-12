@@ -1,6 +1,6 @@
 
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Wallet, WithdrawableWallet, PointsWallet, Transaction } from '../types';
 import { TransactionType } from '../types';
 
@@ -125,6 +125,11 @@ const SortButton: React.FC<{
 export const WalletPage: React.FC<WalletPageProps> = ({ depositWallet, withdrawableWallet, pointsWallet, transactions, onDeposit, onWithdraw }) => {
   const [activeFilter, setActiveFilter] = useState<'All' | TransactionType>('All');
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; order: SortOrder }>({ key: 'date', order: 'desc' });
+  const [visibleCount, setVisibleCount] = useState(10);
+
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [activeFilter, sortConfig]);
 
   const handleSort = (key: SortKey) => {
     let order: SortOrder = 'desc';
@@ -222,11 +227,21 @@ export const WalletPage: React.FC<WalletPageProps> = ({ depositWallet, withdrawa
 
             <div className="mt-1">
                 {processedTransactions.length > 0 
-                  ? processedTransactions.map(tx => <TransactionRow key={tx.id} tx={tx} />) 
+                  ? processedTransactions.slice(0, visibleCount).map(tx => <TransactionRow key={tx.id} tx={tx} />) 
                   : <p className="text-center text-gray-400 py-8">
                       {transactions.length > 0 ? 'No transactions match the selected filter.' : 'No transactions to display.'}
                     </p>}
             </div>
+             {processedTransactions.length > visibleCount && (
+                <div className="mt-4 pt-4 border-t border-space-border/50 text-center">
+                    <button
+                        onClick={() => setVisibleCount(prev => prev + 10)}
+                        className="bg-space-border hover:bg-space-blue text-white font-bold py-2 px-5 rounded-lg transition"
+                    >
+                        Load More
+                    </button>
+                </div>
+            )}
         </div>
       </section>
     </div>

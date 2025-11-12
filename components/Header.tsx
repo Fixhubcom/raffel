@@ -1,6 +1,7 @@
 
+
 import React, { useState } from 'react';
-import type { User } from '../types';
+import type { User, Notification } from '../types';
 
 interface HeaderProps {
     activeTab: string;
@@ -9,6 +10,9 @@ interface HeaderProps {
     onLogout: () => void;
     currentUser: User;
     userRole: 'user' | 'admin' | null;
+    notifications: Notification[];
+    hasUnreadNotifications: boolean;
+    onViewAllNotifications: () => void;
 }
 
 const DesktopNavItem: React.FC<{ label: string; isActive: boolean; onClick: () => void }> = ({ label, isActive, onClick }) => (
@@ -19,17 +23,10 @@ const DesktopNavItem: React.FC<{ label: string; isActive: boolean; onClick: () =
 );
 
 
-export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, pointsBalance, onLogout, currentUser, userRole }) => {
+export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, pointsBalance, onLogout, currentUser, userRole, notifications, hasUnreadNotifications, onViewAllNotifications }) => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // Mock notifications
-  const notifications = [
-    { id: '1', message: 'Your entry for the Pro tier was successful!', time: '5m ago' },
-    { id: '2', message: 'You won $500 in the Basic lotto!', time: '4h ago' },
-    { id: '3', message: 'New Midweek Q&A is available.', time: '1d ago' },
-  ];
-  
   const handleProfileClick = () => {
     setActiveTab('profile');
     setIsProfileOpen(false);
@@ -59,24 +56,28 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, pointsB
           <div className="relative">
             <button onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} className="text-gray-300 hover:text-white text-xl">
               <i className="fas fa-bell"></i>
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyber-pink opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-cyber-pink"></span>
-              </span>
+              {hasUnreadNotifications && (
+                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyber-pink opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-cyber-pink"></span>
+                 </span>
+              )}
             </button>
             {isNotificationsOpen && (
-              <div className="absolute right-0 mt-2 w-72 bg-space-card border border-space-border rounded-lg shadow-lg z-50">
+              <div className="absolute right-0 mt-2 w-80 bg-space-card border border-space-border rounded-lg shadow-lg z-50">
                 <div className="p-3 font-semibold border-b border-space-border">Notifications</div>
                 <ul>
-                  {notifications.map(n => (
+                  {notifications.length > 0 ? notifications.slice(0, 4).map(n => (
                     <li key={n.id} className="p-3 border-b border-space-border/50 hover:bg-space-border/50 cursor-pointer">
                       <p className="text-sm">{n.message}</p>
-                      <p className="text-xs text-gray-400 text-right">{n.time}</p>
+                      <p className="text-xs text-gray-400 text-right">{new Date(n.time).toLocaleTimeString()}</p>
                     </li>
-                  ))}
+                  )) : (
+                    <p className="text-sm text-gray-400 text-center p-4">No new notifications.</p>
+                  )}
                 </ul>
                 <div className="p-2 text-center">
-                  <button className="text-sm text-star-yellow hover:underline">View All</button>
+                  <button onClick={() => { onViewAllNotifications(); setIsNotificationsOpen(false); }} className="text-sm text-star-yellow hover:underline">View All</button>
                 </div>
               </div>
             )}

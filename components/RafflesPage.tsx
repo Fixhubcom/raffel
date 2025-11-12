@@ -5,15 +5,34 @@ import type { LottoTier, AdminSettings, LottoDraw, UserData } from '../types';
 import { CountdownTimer } from './CountdownTimer';
 
 // RaffleBall component for animation
-const RaffleBall: React.FC<{ number?: number; isRevealed: boolean }> = ({ number, isRevealed }) => (
+const RaffleBall: React.FC<{ number?: number | string; isRevealed: boolean }> = ({ number, isRevealed }) => (
   <div className={`relative w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white/50 flex items-center justify-center text-3xl md:text-4xl font-bold transition-all duration-500
     ${isRevealed ? 'bg-star-yellow text-space-dark shadow-glow-yellow scale-110' : 'bg-gradient-to-br from-space-blue to-cyber-pink/50'}`}>
-    <span className={`transition-opacity duration-500 ${isRevealed ? 'opacity-100' : 'opacity-0'}`}>{String(number || '').padStart(2, '0')}</span>
+    <span className={`transition-opacity duration-500 ${isRevealed || typeof number === 'string' ? 'opacity-100' : 'opacity-80'}`}>{number}</span>
   </div>
 );
 
 // Main drawing animation component
 const RaffleDrawingAnimation: React.FC<{ draw: LottoDraw | undefined, participants: number }> = ({ draw, participants }) => {
+  const [rollingNumbers, setRollingNumbers] = useState<string[]>(['00', '00', '00']);
+  
+  useEffect(() => {
+    if (!draw || draw.status !== 'Upcoming') {
+      return;
+    }
+    
+    const interval = setInterval(() => {
+        setRollingNumbers([
+            String(Math.floor(Math.random() * 50) + 1).padStart(2, '0'),
+            String(Math.floor(Math.random() * 50) + 1).padStart(2, '0'),
+            String(Math.floor(Math.random() * 50) + 1).padStart(2, '0'),
+        ]);
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [draw]);
+
+
   if (!draw) {
     return (
         <div className="bg-space-card/70 border border-space-border rounded-2xl p-6 flex flex-col items-center text-center backdrop-blur-sm shadow-lg mb-6">
@@ -23,8 +42,15 @@ const RaffleDrawingAnimation: React.FC<{ draw: LottoDraw | undefined, participan
     )
   }
 
+  const isUpcoming = draw.status === 'Upcoming';
   const isDrawing = draw.status === 'Drawing';
   const isFinished = draw.status === 'Finished';
+  
+  const getBallNumber = (index: number) => {
+      if (isFinished) return String(draw.winningNumbers[index] || '00').padStart(2, '0');
+      if (isDrawing) return '??';
+      return rollingNumbers[index];
+  }
 
   return (
     <div className="bg-space-card/70 border border-space-border rounded-2xl p-6 flex flex-col items-center text-center backdrop-blur-sm shadow-lg mb-6">
@@ -32,9 +58,9 @@ const RaffleDrawingAnimation: React.FC<{ draw: LottoDraw | undefined, participan
       <p className="text-lg text-gray-400 mb-4">{participants.toLocaleString()} players in this draw</p>
 
       <div className={`flex items-center justify-center space-x-4 md:space-x-6 my-6 p-4 bg-space-dark/50 rounded-lg border border-space-border/50 transition-all duration-500 ${isDrawing && 'animate-pulse'}`}>
-        <RaffleBall number={draw.winningNumbers[0]} isRevealed={isFinished} />
-        <RaffleBall number={draw.winningNumbers[1]} isRevealed={isFinished} />
-        <RaffleBall number={draw.winningNumbers[2]} isRevealed={isFinished} />
+        <RaffleBall number={getBallNumber(0)} isRevealed={isFinished} />
+        <RaffleBall number={getBallNumber(1)} isRevealed={isFinished} />
+        <RaffleBall number={getBallNumber(2)} isRevealed={isFinished} />
       </div>
 
       <div className="w-full">
@@ -191,7 +217,7 @@ interface RafflesPageProps {
 export const RafflesPage: React.FC<RafflesPageProps> = ({ raffleTiers, onPlayScheduledRaffle, adminSettings, raffleDraws, currentUserData, onDisableAutoPlay }) => {
     
     const nextUpcomingDraw = useMemo(() => {
-        return raffleDraws.find(d => d.status === 'Upcoming') || raffleDraws.find(d => d.status === 'Drawing') || raffleDraws[raffleDraws.length -1];
+        return raffleDraws.slice().sort((a,b) => new Date(a.drawTime).getTime() - new Date(b.drawTime).getTime()).find(d => new Date(d.drawTime) > new Date()) || raffleDraws[raffleDraws.length -1];
     }, [raffleDraws]);
     
     return (

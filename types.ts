@@ -133,6 +133,7 @@ export interface AdminSettings {
     raffleWinRate: number;
     spinWinRate: number;
     triviaWinRate: number;
+
     scholarshipWinRate: number;
     raffleParticipants: number;
     spinParticipants: number;
@@ -166,10 +167,31 @@ export interface UserData {
     transactions: Transaction[];
     coinCharacters: CoinCharacter[];
     lottoEntries: UserLottoEntry[];
+    notifications: Notification[];
     autoPlayConfig?: {
         enabled: boolean;
         amount: number;
         numbers: number[];
         tier: 'Basic' | 'Intermediate' | 'Pro';
     } | null;
+}
+
+export enum PlatformActivityType {
+    LOGIN = 'User Login',
+    DEPOSIT = 'Deposit Attempt',
+    WITHDRAWAL = 'Withdrawal Request',
+    LOTTO_ENTRY = 'Lotto Entry',
+    LOTTO_WIN = 'Lotto Win',
+    KYC_VERIFIED = 'KYC Verified',
+    ADMIN_ACTION = 'Admin Action',
+}
+
+export interface PlatformActivity {
+    id: string;
+    timestamp: Date;
+    userId: string;
+    userName: string;
+    userAvatar: string;
+    type: PlatformActivityType;
+    details: string;
 }

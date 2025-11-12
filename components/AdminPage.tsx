@@ -1,8 +1,8 @@
 
 
 import React, { useState, useMemo } from 'react';
-import type { User, Transaction, UserData, AdminSettings } from '../types';
-import { TransactionType } from '../types';
+import type { User, Transaction, UserData, AdminSettings, PlatformActivity } from '../types';
+import { PlatformActivityType } from '../types';
 import { Modal } from './Modal';
 
 const formatCurrency = (amount: number) => {
@@ -105,12 +105,17 @@ interface AdminPageProps {
     adminSettings: AdminSettings;
     setAdminSettings: React.Dispatch<React.SetStateAction<AdminSettings>>;
     showNotification: (type: 'success' | 'error' | 'info', message: string) => void;
+    platformActivity: PlatformActivity[];
+    addActivityLog: (userId: string, type: PlatformActivityType, details: string) => void;
 }
 
-export const AdminPage: React.FC<AdminPageProps> = ({ users, allUsersData, adminSettings, setAdminSettings, showNotification }) => {
+export const AdminPage: React.FC<AdminPageProps> = ({ users, allUsersData, adminSettings, setAdminSettings, showNotification, platformActivity, addActivityLog }) => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [dummyWinnerUser, setDummyWinnerUser] = useState<string>(users[0]?.id || '');
   const [dummyWinnerGame, setDummyWinnerGame] = useState<string>('Raffle');
+  
+  const [activityFilter, setActivityFilter] = useState<'All' | PlatformActivityType>('All');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const stats = useMemo(() => {
     let totalDeposited = 0;
@@ -134,9 +139,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({ users, allUsersData, admin
   const assignDummyWinner = () => {
     const user = users.find(u => u.id === dummyWinnerUser);
     if(user) {
-        showNotification('success', `${user.name} has been assigned as a dummy winner for the ${dummyWinnerGame}.`);
+        const message = `${user.name} has been assigned as a dummy winner for the ${dummyWinnerGame}.`;
+        showNotification('success', message);
+        addActivityLog(dummyWinnerUser, PlatformActivityType.ADMIN_ACTION, `Assigned as a dummy winner for ${dummyWinnerGame}.`);
     }
   };
+
+  const filteredAndSortedActivity = useMemo(() => {
+    const filtered = platformActivity.filter(activity => 
+        activityFilter === 'All' || activity.type === activityFilter
+    );
+    return filtered.sort((a, b) => {
+        const timeA = new Date(a.timestamp).getTime();
+        const timeB = new Date(b.timestamp).getTime();
+        return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+    });
+  }, [platformActivity, activityFilter, sortOrder]);
 
   return (
     <div className="container mx-auto px-4 space-y-8">
@@ -151,6 +169,39 @@ export const AdminPage: React.FC<AdminPageProps> = ({ users, allUsersData, admin
             <AdminStatCard title="KYC Verified" value={`${stats.kycVerified} / ${users.length}`} icon="fa-user-check" theme="yellow" />
             <AdminStatCard title="Total Withdrawable" value={formatCurrency(stats.totalWithdrawable)} icon="fa-hand-holding-usd" theme="pink" />
         </section>
+
+        <section id="platform-activity-log">
+             <h2 className="text-xl md:text-2xl font-bold mb-4 tracking-wider">Platform Activity Log</h2>
+             <div className="bg-space-card p-4 rounded-lg shadow-lg border border-space-border">
+                <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-4">
+                    <div className="flex-grow">
+                        <select onChange={(e) => setActivityFilter(e.target.value as 'All' | PlatformActivityType)} value={activityFilter} className="w-full md:w-auto bg-space-border p-2 rounded-md text-white focus:ring-2 focus:ring-cyber-pink outline-none">
+                           <option value="All">All Activities</option>
+                           {Object.values(PlatformActivityType).map(type => (
+                               <option key={type} value={type}>{type}</option>
+                           ))}
+                        </select>
+                    </div>
+                    <button onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')} className="px-4 py-2 bg-space-border rounded-lg hover:bg-gray-600 flex items-center gap-2">
+                        <span>Sort by Time</span>
+                        <i className={`fas ${sortOrder === 'desc' ? 'fa-arrow-down' : 'fa-arrow-up'}`}></i>
+                    </button>
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                    {filteredAndSortedActivity.map(activity => (
+                        <div key={activity.id} className="flex items-center space-x-4 p-3 border-b border-space-border/50">
+                            <img src={activity.userAvatar} alt={activity.userName} className="w-10 h-10 rounded-full"/>
+                            <div className="flex-grow">
+                                <p className="font-semibold text-white">{activity.userName} <span className="text-gray-400 text-sm font-normal">{activity.type}</span></p>
+                                <p className="text-sm text-gray-300">{activity.details}</p>
+                            </div>
+                            <p className="text-xs text-gray-500 text-right whitespace-nowrap">{activity.timestamp.toLocaleString()}</p>
+                        </div>
+                    ))}
+                </div>
+             </div>
+        </section>
+
 
         <section id="admin-settings" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
